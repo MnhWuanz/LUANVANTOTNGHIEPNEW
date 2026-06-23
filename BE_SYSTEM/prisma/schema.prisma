@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+/**
+ * =========================
+ * ENUMS
+ * =========================
+ */
+
+enum UserRole {
+  ADMIN
+  TEACHER
+}
+
+model User {
+  userId       String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole
+
+  teacherId String?  @unique
+  teacher   Teacher? @relation(fields: [teacherId], references: [teacherId])
+
+  refreshToken String?
+  @@index([role])
+  @@map("users")
+}
+
+model Teacher {
+  teacherId     String         @id
+  fullName      String
+  email         String         @unique
+  teacherCode   String         @unique
+  user          User?
+  classSections ClassSection[]
+  @@map("teachers")
+}
+
+model Room {
+  roomId        String         @id
+  roomName      String
+  classSections ClassSection[]
+
+  @@map("rooms")
+}
+
+model ClassSection {
+  classSectionId String                @id
+  subjectName    String
+  roomId         String
+  room           Room                  @relation(fields: [roomId], references: [roomId])
+  teacherId      String
+  teacher        Teacher               @relation(fields: [teacherId], references: [teacherId])
+  schedules      Schedule[]
+  students       StudentClassSection[]
+
+  @@map("class_sections")
+}
+
+model Schedule {
+  scheduleId     String       @id @default(cuid())
+  classSectionId String
+  classSection   ClassSection @relation(fields: [classSectionId], references: [classSectionId], onDelete: Cascade)
+  dayOfWeek      Int
+  startTime      String
+  endTime        String
+  startDate      DateTime
+  endDate        DateTime
+
+  @@map("schedules")
+}
+
+model Student {
+  studentId     String                @id
+  fullName      String
+  email         String                @unique
+  class         String
+  classSections StudentClassSection[]
+
+  @@map("students")
+}
+
+model StudentClassSection {
+  studentId      String
+  classSectionId String
+  student        Student      @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+  classSection   ClassSection @relation(fields: [classSectionId], references: [classSectionId], onDelete: Cascade)
+
+  @@id([studentId, classSectionId])
+  @@map("student_class_sections")
+}

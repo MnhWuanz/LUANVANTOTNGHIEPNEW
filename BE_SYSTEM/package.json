@@ -1,0 +1,78 @@
+{
+  "name": "nodejs-pro",
+  "version": "1.0.0",
+  "description": "nodejs -pro ",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon",
+    "dev": "nodemon",
+    "start:debug": "nodemon --inspect=9229 -e ts,tsx --exec node -r ts-node/register -r tsconfig-paths/register ./src/app.ts"
+  },
+  "nodemonConfig": {
+    "watch": [
+      "src"
+    ],
+    "ext": "ts",
+    "ignore": [
+      "node_modules"
+    ],
+    "exec": "ts-node -r tsconfig-paths/register ./src/app.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MnhWuanz/nodejs-pro.git"
+  },
+  "keywords": [
+    "nodejs"
+  ],
+  "author": "MnhQuan",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MnhWuanz/nodejs-pro/issues"
+  },
+  "homepage": "https://github.com/MnhWuanz/nodejs-pro#readme",
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "axios": "^1.16.1",
+    "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "2.8.5",
+    "dotenv": "16.4.7",
+    "express": "^5.2.1",
+    "form-data": "^4.0.5",
+    "jsonwebtoken": "9.0.2",
+    "multer": "^2.1.1",
+    "mysql2": "3.12.0",
+    "socket.io": "^4.8.3",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "11.0.5",
+    "zod": "3.24.2"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "5.0.2",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "2.8.17",
+    "@types/express": "5.0.0",
+    "@types/express-session": "1.18.1",
+    "@types/jsonwebtoken": "9.0.9",
+    "@types/multer": "^2.1.0",
+    "@types/node": "^25.2.0",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
+    "nodemon": "3.1.9",
+    "prisma": "6.19.3",
+    "ts-node": "10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "5.7.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "bcrypt"
+    ]
+  }
+}
