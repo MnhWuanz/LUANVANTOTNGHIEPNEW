@@ -38,6 +38,6 @@ services:
     depends_on:
       - frontend_SYSTEM
 
-  networks:
-    shared_db:
-      external: true
+networks:
+  shared_db:
+    external: true
