@@ -1,0 +1,13 @@
+# Chặn các thư mục node_modules nặng
+BE_SYSTEM/node_modules/
+FE_SYSTEM/node_modules/
+
+# Chặn thư mục build sau khi biên dịch
+FE_SYSTEM/build/
+FE_SYSTEM/dist/
+
+# Chặn các file cấu hình bảo mật và file tài liệu excel phát sinh
+.env
+*.env
+*.xlsx
+Book1.xlsx

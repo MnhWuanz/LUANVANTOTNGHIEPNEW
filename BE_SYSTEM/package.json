@@ -4,10 +4,11 @@
   "description": "nodejs -pro ",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon",
-    "dev": "nodemon",
-    "start:debug": "nodemon --inspect=9229 -e ts,tsx --exec node -r ts-node/register -r tsconfig-paths/register ./src/app.ts"
+    "start": "node src/app.ts",
+    "prisma:generate": "prisma generate",
+    "db:deploy": "prisma migrate deploy",
+    "start:prod": "prisma migrate deploy && npx ts-node -r tsconfig-paths/register src/app.ts",
+    "dev": "nodemon src/app.ts"
   },
   "nodemonConfig": {
     "watch": [
@@ -48,6 +49,7 @@
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "uuid": "11.0.5",
+    "prisma": "6.19.3",
     "zod": "3.24.2"
   },
   "devDependencies": {

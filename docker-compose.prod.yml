@@ -1,0 +1,40 @@
+services:
+  backend_SYSTEM:
+    build:
+      context: ./BE_SYSTEM
+      dockerfile: Dockerfile
+    image: ghcr.io/mnhwuanz/demo_hethongdiemdanh-backend:latest
+    container_name: app_backend_system
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
+      SYSTEM_URL: ${SYSTEM_URL}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  frontend_SYSTEM:
+    build:
+      context: ./FE_SYSTEM
+      dockerfile: Dockerfile
+    image: ghcr.io/mnhwuanz/demo_hethongdiemdanh-frontend:latest
+    container_name: app_frontend_system
+    restart: unless-stopped
+    depends_on:
+      - backend_SYSTEM
+
+  cloudflared_SYSTEM:
+    image: cloudflare/cloudflared:latest
+    container_name: app_cloudflared_system
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TOKEN}
+    depends_on:
+      - frontend_SYSTEM
+
+networks:
+  - default
+  - shared_db
