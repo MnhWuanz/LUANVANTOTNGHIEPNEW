@@ -39,5 +39,5 @@ services:
       - frontend_SYSTEM
 
   networks:
-    - default
-    - shared_db
+    shared_db:
+      external: true
