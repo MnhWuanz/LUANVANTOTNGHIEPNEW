@@ -7,7 +7,8 @@
     "start": "node src/app.ts",
     "prisma:generate": "prisma generate",
     "db:deploy": "prisma migrate deploy",
-    "start:prod": "prisma migrate deploy && npx ts-node -r tsconfig-paths/register src/app.ts",
+    "db:seed": "prisma db seed",
+    "start:prod": "prisma migrate deploy && prisma db seed && npx ts-node -r tsconfig-paths/register src/app.ts",
     "dev": "nodemon src/app.ts"
   },
   "nodemonConfig": {
