@@ -38,6 +38,6 @@ services:
     depends_on:
       - frontend_SYSTEM
 
-networks:
-  - default
-  - shared_db
+  networks:
+    - default
+    - shared_db
