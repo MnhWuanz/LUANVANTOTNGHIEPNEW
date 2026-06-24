@@ -1,177 +1,352 @@
+import { UserRole } from '@prisma/client';
 import { prisma } from 'config/client';
+import { TrainingSyncCourseClassesInput } from 'validation/sync.validation';
 import bcrypt from 'bcrypt';
+const SALT_ROUNDS = 10;
+type CountSummary = {
+  created: number;
+  updated?: number;
+};
+export type TrainingSyncSummary = {
+  users: CountSummary;
+  subjects: CountSummary;
+  teachers: CountSummary;
+  rooms: CountSummary;
+  shifts: CountSummary;
+  students: CountSummary;
+  courseClasses: CountSummary;
+  courseSchedules: CountSummary;
+  enrollments: CountSummary;
+};
+export type TrainingSyncResult = {
+  success: true;
+  message: string;
+  summary: TrainingSyncSummary;
+};
 
-export interface SyncRoom {
-  roomId: string;
-  roomName: string;
+function createEmptySummary(): TrainingSyncSummary {
+  return {
+    users: { created: 0 },
+    subjects: { created: 0, updated: 0 },
+    teachers: { created: 0 },
+    rooms: { created: 0, updated: 0 },
+    shifts: { created: 0, updated: 0 },
+    students: { created: 0, updated: 0 },
+    courseClasses: { created: 0, updated: 0 },
+    courseSchedules: { created: 0, updated: 0 },
+    enrollments: { created: 0, updated: 0 },
+  };
 }
 
-export interface SyncTeacher {
-  teacherId: string;
-  fullName: string;
-  email: string;
+function toDateOnly(value: string): Date {
+  return new Date(`${value}T00:00:00.000Z`);
 }
 
-export interface SyncSchedule {
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
-  startDate: string;
-  endDate: string;
+function toTime(value: string): Date {
+  const normalized = value.length === 5 ? `${value}:00` : value;
+  return new Date(`1970-01-01T${normalized}.000Z`);
 }
 
-export interface SyncStudent {
-  studentId: string;
-  fullName: string;
-  email: string;
-  class: string;
-}
+export const SyncService = async (payload: TrainingSyncCourseClassesInput) => {
+  const summary = createEmptySummary();
 
-export interface SyncPayload {
-  classSectionId: string;
-  subjectName: string;
-  room: SyncRoom;
-  teacher: SyncTeacher;
-  schedules: SyncSchedule[];
-  students: SyncStudent[];
-}
-
-export const SyncService = {
-  sync: async (data: SyncPayload) => {
-    return prisma.$transaction(async (tx) => {
-      const room = await tx.room.upsert({
-        where: { roomId: data.room.roomId },
-        update: { roomName: data.room.roomName },
-        create: { roomId: data.room.roomId, roomName: data.room.roomName },
+  return prisma.$transaction(async (tx) => {
+    /**
+     * 1. Subjects
+     */
+    for (const item of payload.subjects) {
+      const existing = await tx.subject.findUnique({
+        where: { source_id_subject: item.sourceSubjectId },
+        select: { id_subject: true },
       });
-      let teacher = await tx.teacher.findUnique({
-        where: { teacherId: data.teacher.teacherId },
+      existing
+        ? (await tx.subject.update({
+            where: { source_id_subject: item.sourceSubjectId },
+            data: {
+              subject_code: item.subjectCode,
+              name: item.name,
+            },
+          }),
+          summary.subjects.updated!++)
+        : (await tx.subject.create({
+            data: {
+              source_id_subject: item.sourceSubjectId,
+              subject_code: item.subjectCode,
+              name: item.name,
+            },
+          }),
+          summary.subjects.created++);
+    }
+    /**
+     * 2. Rooms
+     */
+    for (const item of payload.rooms) {
+      const existing = await tx.room.findUnique({
+        where: { source_id_room: item.sourceRoomId },
       });
-      if (!teacher) {
-        teacher = await tx.teacher.findUnique({
-          where: { email: data.teacher.email },
-        });
-      }
+      existing
+        ? (await tx.room.update({
+            where: { source_id_room: item.sourceRoomId },
+            data: {
+              room_code: item.room_code,
+              capacity: item.capacity,
+            },
+          }),
+          summary.rooms.updated!++)
+        : (await tx.room.create({
+            data: {
+              source_id_room: item.sourceRoomId,
+              room_code: item.room_code,
+              capacity: item.capacity,
+            },
+          }),
+          summary.rooms.created++);
+    }
 
-      if (teacher) {
-        teacher = await tx.teacher.update({
-          where: { teacherId: teacher.teacherId },
-          data: {
-            fullName: data.teacher.fullName,
-            email: data.teacher.email,
-          },
-        });
-      } else {
-        teacher = await tx.teacher.create({
-          data: {
-            teacherId: data.teacher.teacherId,
-            fullName: data.teacher.fullName,
-            email: data.teacher.email,
-            teacherCode: data.teacher.teacherId,
-          },
-        });
-      }
-
-      // 3. Sync User Account for Teacher
-      let user = await tx.user.findFirst({
+    /**
+     * 3. Shifts
+     */
+    for (const item of payload.shifts) {
+      const existing = await tx.shift.findUnique({
+        where: { source_id_shift: item.sourceShiftId },
+      });
+      existing
+        ? (await tx.shift.update({
+            where: { source_id_shift: item.sourceShiftId },
+            data: {
+              name: item.name,
+              start_time: toTime(item.startTime),
+              end_time: toTime(item.endTime),
+            },
+          }),
+          summary.shifts.updated!++)
+        : (await tx.shift.create({
+            data: {
+              source_id_shift: item.sourceShiftId,
+              name: item.name,
+              start_time: toTime(item.startTime),
+              end_time: toTime(item.endTime),
+            },
+          }),
+          summary.shifts.created++);
+    }
+    /**
+     * 4. Teachers + Users
+     */
+    for (const item of payload.teachers) {
+      const existingTeacher = await tx.teacher.findUnique({
         where: {
-          OR: [{ teacherId: teacher.teacherId }, { email: teacher.email }],
+          source_id_teacher: item.sourceTeacherId,
+        },
+      });
+      if (!existingTeacher) {
+        const passworDefault = item.email! + '123456';
+        const hashedPassword = await bcrypt.hash(passworDefault, SALT_ROUNDS);
+        const user = await tx.user.create({
+          data: {
+            email: item.email!,
+            password_hash: hashedPassword,
+            role: UserRole.TEACHER,
+            is_active: true,
+            createdAt: new Date(),
+          },
+        });
+        await tx.teacher.create({
+          data: {
+            source_id_teacher: item.sourceTeacherId,
+            teacher_code: item.teacherCode,
+            full_name: item.fullName,
+            id_user: user.id_user,
+          },
+        });
+        summary.teachers.created++;
+        summary.users.created++;
+      }
+    }
+
+    /**
+     * 5. Students
+     */
+    for (const item of payload.students) {
+      const existingStudent = await tx.student.findUnique({
+        where: {
+          source_id_student: item.sourceStudentId,
+        },
+      });
+      existingStudent
+        ? (await tx.student.update({
+            where: {
+              source_id_student: item.sourceStudentId,
+            },
+            data: {
+              student_code: item.student_code,
+              full_name: item.full_name,
+              email: item.email!,
+              class: item.class,
+            },
+          }),
+          summary.students.updated!++)
+        : (await tx.student.create({
+            data: {
+              source_id_student: item.sourceStudentId,
+              student_code: item.student_code,
+              full_name: item.full_name,
+              email: item.email!,
+              class: item.class,
+              is_face_registered: false,
+            },
+          }),
+          summary.students.created++);
+    }
+    /**
+     * 6. Course classes
+     */
+    for (const item of payload.courseClasses) {
+      const subject = await tx.subject.findUniqueOrThrow({
+        where: {
+          source_id_subject: item.sourceSubjectId,
+        },
+      });
+      const teacher = await tx.teacher.findUniqueOrThrow({
+        where: {
+          source_id_teacher: item.sourceTeacherId,
+        },
+      });
+      const existingCourseClass = await tx.course_Class.findUnique({
+        where: {
+          source_id_course_class: item.sourceCourseClassId,
+        },
+      });
+      existingCourseClass
+        ? (await tx.course_Class.update({
+            where: {
+              source_id_course_class: item.sourceCourseClassId,
+            },
+            data: {
+              course_code: item.courseCode,
+              id_subject: subject.id_subject,
+              id_teacher: teacher.id_teacher,
+            },
+          }),
+          summary.courseClasses.updated!++)
+        : (await tx.course_Class.create({
+            data: {
+              source_id_course_class: item.sourceCourseClassId,
+              course_code: item.courseCode,
+              id_subject: subject.id_subject,
+              id_teacher: teacher.id_teacher,
+            },
+          }),
+          summary.courseClasses.created++);
+    }
+
+    /**
+     * 7. Course schedules
+     */
+    for (const item of payload.courseSchedules) {
+      const courseClass = await tx.course_Class.findUniqueOrThrow({
+        where: {
+          source_id_course_class: item.sourceCourseClassId,
         },
       });
 
-      if (!user) {
-        const hashedPassword = await bcrypt.hash('123456', 10);
-        user = await tx.user.create({
-          data: {
-            email: teacher.email,
-            passwordHash: hashedPassword,
-            role: 'TEACHER',
-            teacherId: teacher.teacherId,
-          },
-        });
-      } else {
-        user = await tx.user.update({
-          where: { userId: user.userId },
-          data: {
-            email: teacher.email,
-            teacherId: teacher.teacherId,
-          },
-        });
-      }
-
-      // 4. Sync ClassSection
-      const classSection = await tx.classSection.upsert({
-        where: { classSectionId: data.classSectionId },
-        update: {
-          subjectName: data.subjectName,
-          roomId: room.roomId,
-          teacherId: teacher.teacherId,
-        },
-        create: {
-          classSectionId: data.classSectionId,
-          subjectName: data.subjectName,
-          roomId: room.roomId,
-          teacherId: teacher.teacherId,
+      const room = await tx.room.findUniqueOrThrow({
+        where: {
+          source_id_room: item.sourceRoomId,
         },
       });
 
-      // 5. Sync Schedules
-      // Delete old schedules first to avoid conflicts / stale schedules
-      await tx.schedule.deleteMany({
-        where: { classSectionId: classSection.classSectionId },
+      const startShift = await tx.shift.findUniqueOrThrow({
+        where: {
+          source_id_shift: item.sourceStartShiftId,
+        },
+      });
+      const endShift = await tx.shift.findUniqueOrThrow({
+        where: {
+          source_id_shift: item.sourceEndShiftId,
+        },
+      });
+      const existingSchedule = await tx.course_Schedule.findUnique({
+        where: {
+          source_id_course_schedule: item.sourceCourseScheduleId,
+        },
+      });
+      existingSchedule
+        ? (await tx.course_Schedule.update({
+            where: {
+              source_id_course_schedule: item.sourceCourseScheduleId,
+            },
+            data: {
+              id_course_class: courseClass.id_course_class,
+              id_room: room.id_room,
+              id_start_shift: startShift.id_shift,
+              id_end_shift: endShift.id_shift,
+              start_date: toDateOnly(item.startDate),
+              end_date: toDateOnly(item.endDate),
+              day_of_week: item.dayOfWeek,
+            },
+          }),
+          summary.courseSchedules.updated!++)
+        : (await tx.course_Schedule.create({
+            data: {
+              source_id_course_schedule: item.sourceCourseScheduleId,
+              id_course_class: courseClass.id_course_class,
+              id_room: room.id_room,
+              id_start_shift: startShift.id_shift,
+              id_end_shift: endShift.id_shift,
+              start_date: toDateOnly(item.startDate),
+              end_date: toDateOnly(item.endDate),
+              day_of_week: item.dayOfWeek,
+            },
+          }),
+          summary.courseSchedules.created++);
+    }
+
+    /**
+     * 8. Enrollments
+     */
+    for (const item of payload.enrollments) {
+      const student = await tx.student.findUniqueOrThrow({
+        where: {
+          source_id_student: item.sourceStudentId,
+        },
       });
 
-      for (const sched of data.schedules) {
-        const startDate = new Date(`${sched.startDate}T00:00:00Z`);
-        const endDate = new Date(`${sched.endDate}T00:00:00Z`);
-        await tx.schedule.create({
-          data: {
-            classSectionId: classSection.classSectionId,
-            dayOfWeek: sched.dayOfWeek,
-            startTime: sched.startTime,
-            endTime: sched.endTime,
-            startDate,
-            endDate,
-          },
-        });
-      }
-
-      // 6. Sync Students
-      for (const std of data.students) {
-        await tx.student.upsert({
-          where: { studentId: std.studentId },
-          update: {
-            fullName: std.fullName,
-            email: std.email,
-            class: std.class,
-          },
-          create: {
-            studentId: std.studentId,
-            fullName: std.fullName,
-            email: std.email,
-            class: std.class,
-          },
-        });
-      }
-      // 7. Sync StudentClassSection relations
-      await tx.studentClassSection.deleteMany({
-        where: { classSectionId: classSection.classSectionId },
+      const courseClass = await tx.course_Class.findUniqueOrThrow({
+        where: {
+          source_id_course_class: item.sourceCourseClassId,
+        },
       });
-      for (const std of data.students) {
-        await tx.studentClassSection.create({
-          data: {
-            studentId: std.studentId,
-            classSectionId: classSection.classSectionId,
-          },
-        });
-      }
-      return {
-        classSection,
-        teacher,
-        user,
-        room,
-        studentCount: data.students.length,
-      };
-    });
-  },
+      const existingEnrollment = await tx.enrollment.findUnique({
+        where: {
+          source_id_enrollment: item.sourceEnrollmentId!,
+        },
+      });
+      existingEnrollment
+        ? (await tx.enrollment.update({
+            where: {
+              source_id_enrollment: item.sourceEnrollmentId!,
+            },
+            data: {
+              id_student: student.id_student,
+              id_course_class: courseClass.id_course_class,
+            },
+          }),
+          summary.enrollments.updated!++)
+        : (await tx.enrollment.create({
+            data: {
+              source_id_enrollment: item.sourceEnrollmentId!,
+              id_student: student.id_student,
+              id_course_class: courseClass.id_course_class,
+            },
+          }),
+          summary.enrollments.created++);
+    }
+
+    return {
+      success: true,
+      message: 'Đồng bộ dữ liệu lớp học phần thành công',
+      summary,
+    };
+  });
 };

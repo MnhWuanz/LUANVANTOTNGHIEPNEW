@@ -18,80 +18,261 @@ enum UserRole {
   TEACHER
 }
 
+enum KioskStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum AttendanceRecordStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+enum AttendanceSessionStatus {
+  NOT_STARTED
+  OPEN
+  CLOSED
+}
+
+enum FaceEnrollmentStatus {
+  ACTIVE
+  REPLACED
+  FAILED
+}
+
+/**
+ * =========================
+ * MODELS SYNC WITH DATABASE
+ * =========================
+ */
+
 model User {
-  userId       String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  role         UserRole
+  id_user            Int               @id @default(autoincrement())
+  email              String            @unique
+  password_hash      String
+  refresh_token_hash String?
+  role               UserRole
+  is_active          Boolean           @default(true)
+  last_login         DateTime?         @db.Timestamp(6)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  teachers           Teacher?
+  faceEnrollments    Face_Enrollment[]
 
-  teacherId String?  @unique
-  teacher   Teacher? @relation(fields: [teacherId], references: [teacherId])
-
-  refreshToken String?
-  @@index([role])
   @@map("users")
 }
 
 model Teacher {
-  teacherId     String         @id
-  fullName      String
-  email         String         @unique
-  teacherCode   String         @unique
-  user          User?
-  classSections ClassSection[]
-  @@map("teachers")
+  id_teacher        Int            @id @default(autoincrement())
+  source_id_teacher Int            @unique
+  full_name         String
+  teacher_code      String         @unique
+  id_user           Int            @unique
+  user              User           @relation(fields: [id_user], references: [id_user])
+  courseClasses     Course_Class[]
+
+  @@map("edu_teachers")
+}
+
+model Subject {
+  id_subject        Int            @id @default(autoincrement())
+  source_id_subject Int            @unique
+  subject_code      String         @unique
+  name              String
+  courseClasses     Course_Class[]
+
+  @@map("edu_subjects")
 }
 
 model Room {
-  roomId        String         @id
-  roomName      String
-  classSections ClassSection[]
+  id_room         Int               @id @default(autoincrement())
+  source_id_room  Int               @unique
+  room_code       String            @unique
+  capacity        Int
+  courseSchedules Course_Schedule[]
+  kiosk           Kiosk?
 
-  @@map("rooms")
+  @@map("edu_rooms")
 }
 
-model ClassSection {
-  classSectionId String                @id
-  subjectName    String
-  roomId         String
-  room           Room                  @relation(fields: [roomId], references: [roomId])
-  teacherId      String
-  teacher        Teacher               @relation(fields: [teacherId], references: [teacherId])
-  schedules      Schedule[]
-  students       StudentClassSection[]
+model Shift {
+  id_shift             Int               @id @default(autoincrement())
+  source_id_shift      Int               @unique
+  name                 String            @unique
+  start_time           DateTime          @db.Time
+  end_time             DateTime          @db.Time
+  courseSchedulesStart Course_Schedule[] @relation("CourseScheduleStartShift")
+  courseSchedulesEnd   Course_Schedule[] @relation("CourseScheduleEndShift")
 
-  @@map("class_sections")
-}
-
-model Schedule {
-  scheduleId     String       @id @default(cuid())
-  classSectionId String
-  classSection   ClassSection @relation(fields: [classSectionId], references: [classSectionId], onDelete: Cascade)
-  dayOfWeek      Int
-  startTime      String
-  endTime        String
-  startDate      DateTime
-  endDate        DateTime
-
-  @@map("schedules")
+  @@map("edu_shifts")
 }
 
 model Student {
-  studentId     String                @id
-  fullName      String
-  email         String                @unique
-  class         String
-  classSections StudentClassSection[]
+  id_student         Int                 @id @default(autoincrement())
+  source_id_student  Int                 @unique
+  student_code       String              @unique
+  full_name          String
+  email              String              @unique
+  class              String
+  is_face_registered Boolean             @default(false)
+  enrollments        Enrollment[]
+  faceEnrollments    Face_Enrollment[]
+  attendanceRecords  Attendance_Record[]
 
-  @@map("students")
+  @@map("edu_students")
 }
 
-model StudentClassSection {
-  studentId      String
-  classSectionId String
-  student        Student      @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
-  classSection   ClassSection @relation(fields: [classSectionId], references: [classSectionId], onDelete: Cascade)
+model Course_Class {
+  id_course_class        Int               @id @default(autoincrement())
+  source_id_course_class Int               @unique
+  course_code            String            @unique
+  id_subject             Int
+  subject                Subject           @relation(fields: [id_subject], references: [id_subject])
+  id_teacher             Int
+  teacher                Teacher           @relation(fields: [id_teacher], references: [id_teacher])
+  enrollments            Enrollment[]
+  courseSchedules        Course_Schedule[]
 
-  @@id([studentId, classSectionId])
-  @@map("student_class_sections")
+  @@map("edu_course_classes")
+}
+
+model Enrollment {
+  id_enrollment        Int                 @id @default(autoincrement())
+  source_id_enrollment Int                 @unique
+  id_student           Int
+  student              Student             @relation(fields: [id_student], references: [id_student])
+  id_course_class      Int
+  course_class         Course_Class        @relation(fields: [id_course_class], references: [id_course_class])
+  attendanceRecords    Attendance_Record[]
+
+  @@unique([id_student, id_course_class])
+  @@map("edu_enrollments")
+}
+
+model Course_Schedule {
+  id_course_schedule        Int                  @id @default(autoincrement())
+  source_id_course_schedule Int                  @unique
+  id_course_class           Int
+  course_class              Course_Class         @relation(fields: [id_course_class], references: [id_course_class])
+  id_room                   Int
+  room                      Room                 @relation(fields: [id_room], references: [id_room])
+  id_start_shift            Int
+  start_shift               Shift                @relation("CourseScheduleStartShift", fields: [id_start_shift], references: [id_shift])
+  id_end_shift              Int
+  end_shift                 Shift                @relation("CourseScheduleEndShift", fields: [id_end_shift], references: [id_shift])
+  start_date                DateTime             @db.Date
+  end_date                  DateTime             @db.Date
+  day_of_week               Int
+  attendanceSession         Attendance_Session[]
+
+  @@map("edu_course_schedules")
+}
+
+/**
+ * =========================
+ * MODELS PRIMARY
+ * =========================
+ */
+
+model Face_Enrollment {
+  id_face_enrollment Int                  @id @default(autoincrement())
+  face_id            String
+  collection_id      String
+  image_url          String?
+  image_s3_key       String?
+  status             FaceEnrollmentStatus
+  quality_score      Float?
+  enrolled_at        DateTime             @default(now())
+  created_at         DateTime             @default(now())
+  id_student         Int
+  student            Student              @relation(fields: [id_student], references: [id_student])
+  id_user            Int
+  user               User                 @relation(fields: [id_user], references: [id_user])
+  attendanceRecords  Attendance_Record[]
+
+  @@unique([collection_id, face_id])
+  @@map("face_enrollments")
+}
+
+model Kiosk {
+  id_kiosk          Int                 @id @default(autoincrement())
+  device_code       String              @unique
+  device_name       String
+  status            KioskStatus         @default(PENDING)
+  is_active         Boolean             @default(false)
+  activated_at      DateTime?
+  last_seen_at      DateTime?
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+  id_room           Int                 @unique
+  room              Room                @relation(fields: [id_room], references: [id_room])
+  attendanceRecords Attendance_Record[]
+  activationCodes   Activation_Code[]
+
+  @@map("kiosk_devices")
+}
+
+model Activation_Code {
+  id_activation_code Int      @id @default(autoincrement())
+  code               Int      @unique
+  is_used            Boolean  @default(false)
+  is_active          Boolean  @default(false)
+  created_at         DateTime @default(now())
+  id_kiosk           Int?
+  kiosk              Kiosk?   @relation(fields: [id_kiosk], references: [id_kiosk])
+
+  @@map("activation_kiosk_codes")
+}
+
+model Attendance_Session {
+  id_attendance_session Int                     @id @default(autoincrement())
+  id_course_schedule    Int
+  course_schedule       Course_Schedule         @relation(fields: [id_course_schedule], references: [id_course_schedule])
+  session_date          DateTime                @db.Date
+  status                AttendanceSessionStatus
+  checkin_open_at       DateTime
+  checkin_close_at      DateTime
+  opened_at             DateTime?
+  closed_at             DateTime?
+  created_at            DateTime                @default(now())
+  attendanceRecords     Attendance_Record[]
+
+  @@unique([id_course_schedule, session_date])
+  @@map("attendance_sessions")
+}
+
+model Attendance_Record {
+  id_attendance_record    Int                    @id @default(autoincrement())
+  id_attendance_session   Int
+  attendance_session      Attendance_Session     @relation(fields: [id_attendance_session], references: [id_attendance_session])
+  id_student              Int
+  student                 Student                @relation(fields: [id_student], references: [id_student])
+  id_face_enrollment      Int?
+  face_enrollment         Face_Enrollment?       @relation(fields: [id_face_enrollment], references: [id_face_enrollment])
+  id_kiosk                Int?
+  kiosk                   Kiosk?                 @relation(fields: [id_kiosk], references: [id_kiosk])
+  confidence              Float?
+  status                  AttendanceRecordStatus
+  checkin_time            DateTime?
+  created_at              DateTime               @default(now())
+  enrollment              Enrollment?            @relation(fields: [enrollmentId_enrollment], references: [id_enrollment])
+  enrollmentId_enrollment Int?
+
+  @@unique([id_attendance_session, id_student])
+  @@map("attendance_records")
+}
+
+model Sync_Batch {
+  id_sync_batch Int @id @default(autoincrement())
+
+  total_records Int       @default(0)
+  total_created Int       @default(0)
+  total_updated Int       @default(0)
+  summary       Json?
+  synced_at     DateTime  @default(now())
+
+  @@map("sync_batches")
 }

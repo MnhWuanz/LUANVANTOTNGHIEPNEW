@@ -3,14 +3,10 @@ import { z } from 'zod';
 export const createUserSchema = z.object({
   email: z.string().email('Email không hợp lệ'),
   password: z.string().min(6, 'Password phải có ít nhất 6 ký tự'),
-  role: z.enum(['admin', 'teacher', 'student'], {
-    errorMap: () => ({ message: 'Role phải là admin, teacher hoặc student' }),
+  role: z.enum(['admin', 'teacher'], {
+    errorMap: () => ({ message: 'Role phải là admin hoặc teacher' }),
   }),
   name: z.string().min(1, 'Tên không được để trống').max(255),
-  code: z.string().max(50).optional(),
-  phone: z.string().max(20).optional(),
-  face_url: z.string().max(500).optional(),
-  class: z.string().max(100).optional(),
 });
 
 export const updateUserSchema = z.object({
@@ -21,8 +17,8 @@ export const updateUserSchema = z.object({
   face_url: z.string().max(500).optional(),
   class: z.string().max(100).optional(),
   role: z
-    .enum(['admin', 'teacher', 'student'], {
-      errorMap: () => ({ message: 'Role phải là admin, teacher hoặc student' }),
+    .enum(['admin', 'teacher'], {
+      errorMap: () => ({ message: 'Role phải là admin hoặc teacher' }),
     })
     .optional(),
 });

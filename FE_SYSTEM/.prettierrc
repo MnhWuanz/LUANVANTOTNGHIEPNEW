@@ -1,0 +1,9 @@
+{
+  "semi": true, // tự động thêm dấu chấm phẩy ở cuối câu
+  "tabWidth": 2, // số lượng khoảng trắng để sử dụng làm thụt lề
+  "printWidth": 100, // chiều rộng tối đa của dòng
+  "singleQuote": true, // sử dụng dấu ngoặc đơn thay vì dấu ngoặc kép
+  "trailingComma": "all", // tự động thêm dấu phẩy ở cuối dòng khi có nhiều tham số
+  "bracketSpacing": true,// thêm khoảng trắng giữa dấu ngoặc và nội dung bên trong
+  "endOfLine": "auto"// tự động phát hiện kiểu kết thúc dòng (CRLF, LF, CR)
+}

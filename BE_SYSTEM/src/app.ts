@@ -46,7 +46,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// API Routes
 apiRoutes(app);
 
 // Handle 404

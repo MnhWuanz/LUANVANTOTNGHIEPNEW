@@ -26,7 +26,6 @@ services:
     restart: unless-stopped
     depends_on:
       - backend_SYSTEM
-
   cloudflared_SYSTEM:
     image: cloudflare/cloudflared:latest
     container_name: app_cloudflared_system
@@ -34,7 +33,6 @@ services:
     command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TOKEN}
     depends_on:
       - frontend_SYSTEM
-
 networks:
   shared_db:
     external: true

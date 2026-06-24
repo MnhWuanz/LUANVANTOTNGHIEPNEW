@@ -4,7 +4,6 @@ import 'dotenv/config';
 // Lưu token đã bị thu hồi: token -> thời điểm hết hạn (ms)
 const blacklist = new Map<string, number>();
 
-// Thêm token vào blacklist
 const addToBlacklist = (token: string): void => {
   try {
     const decoded = jwt.decode(token) as { exp?: number } | null;
