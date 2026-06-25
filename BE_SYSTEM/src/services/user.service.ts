@@ -1,4 +1,4 @@
-// import { prisma } from 'config/client';
+import { prisma } from 'config/client';
 // import bcrypt from 'bcrypt';
 // import { CreateUserInput, UpdateUserInput } from 'validation/user.validation';
 // import { UserRole } from '@prisma/client';
@@ -18,9 +18,32 @@
 //   },
 // } as const;
 
+const USER_WITH_TEACHER_INCLUDE = {
+  teachers: {
+    select: {
+      id_teacher: true,
+      full_name: true,
+      teacher_code: true,
+    },
+  },
+} as const;
+
 // // Get all users
 
 // // Get one user by userId
+const findUserByEmail = async (email: string) => {
+  return prisma.user.findUnique({
+    where: { email },
+    include: USER_WITH_TEACHER_INCLUDE,
+  });
+};
+
+const findUserByID = async (id: number) => {
+  return prisma.user.findUnique({
+    where: { id_user: id },
+    include: USER_WITH_TEACHER_INCLUDE,
+  });
+};
 
 // // Create new user
 // const createUser = async (data: CreateUserInput) => {
@@ -85,11 +108,13 @@
 //   }
 // };
 
-// export const UserService = {
-//   getAllUsers,
-//   getUserById,
-//   createUser,
-//   updateUser,
-//   deleteUser,
-//   searchUsersByRole,
-// };
+export const UserService = {
+  //   getAllUsers,
+  //   getUserById,
+  //   createUser,
+  //   updateUser,
+  //   deleteUser,
+  //   searchUsersByRole,
+  findUserByEmail,
+  findUserByID,
+};

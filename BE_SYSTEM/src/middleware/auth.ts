@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from 'express';
-import { checkValidJWT } from './jwt.midleware';
+import { authMiddleware } from './auth.midleware';
 
 const isLogin = (req: Request, res: Response, next: NextFunction) => {
-  checkValidJWT(req, res, next);
+  authMiddleware(req, res, next);
 };
 
 const isAdmin = (req: Request, res: Response, next: NextFunction) => {

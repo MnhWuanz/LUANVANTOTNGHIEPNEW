@@ -14,3 +14,5 @@ export const refreshTokenSchema = z.object({
       message: 'Refresh token không hợp lệ',
     }),
 });
+export type LoginInputSchema = z.infer<typeof loginSchema>;
+export type RefreshInputSchema = z.infer<typeof refreshTokenSchema>;
