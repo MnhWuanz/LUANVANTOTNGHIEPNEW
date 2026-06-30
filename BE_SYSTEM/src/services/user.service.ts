@@ -1,23 +1,11 @@
 import { prisma } from 'config/client';
-// import bcrypt from 'bcrypt';
-// import { CreateUserInput, UpdateUserInput } from 'validation/user.validation';
-// import { UserRole } from '@prisma/client';
-
-// const SALT_ROUNDS = 10;
-
-// const USER_SELECT = {
-//   userId: true,
-//   email: true,
-//   role: true,
-//   teacherId: true,
-//   teacher: {
-//     select: {
-//       fullName: true,
-//       teacherCode: true,
-//     },
-//   },
-// } as const;
-
+import { hashPassword } from 'src/utils/password.util';
+type UpdateTeacherInput = {
+  full_name?: string;
+  teacher_code?: string;
+  email?: string;
+  password?: string;
+};
 const USER_WITH_TEACHER_INCLUDE = {
   teachers: {
     select: {
@@ -27,10 +15,24 @@ const USER_WITH_TEACHER_INCLUDE = {
     },
   },
 } as const;
+const USER_WITH_GETALL = {
+  select: {
+    id_user: true,
+    email: true,
+    role: true,
+    is_active: true,
+    last_login: true,
+    createdAt: true,
+    teachers: {
+      select: {
+        id_teacher: true,
+        full_name: true,
+        teacher_code: true,
+      },
+    },
+  },
+};
 
-// // Get all users
-
-// // Get one user by userId
 const findUserByEmail = async (email: string) => {
   return prisma.user.findUnique({
     where: { email },
@@ -44,77 +46,83 @@ const findUserByID = async (id: number) => {
     include: USER_WITH_TEACHER_INCLUDE,
   });
 };
+const getAllUser = () => {
+  return prisma.user.findMany({
+    ...USER_WITH_GETALL,
+    where: { role: 'TEACHER' },
+  });
+};
+const getTeacherById = async (id: number) => {
+  return prisma.teacher.findUnique({
+    where: { id_teacher: id },
+    select: {
+      id_teacher: true,
+      full_name: true,
+      teacher_code: true,
+    },
+  });
+};
+const getTeacherByUserId = async (id_user: number) => {
+  return prisma.teacher.findUnique({
+    where: { id_user },
+    select: {
+      id_teacher: true,
+      full_name: true,
+      teacher_code: true,
+    },
+  });
+};
 
-// // Create new user
-// const createUser = async (data: CreateUserInput) => {
-//   const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
+const updateTeacher = async (id_teacher: number, data: UpdateTeacherInput) => {
+  const teacherData: any = {};
+  const userData: any = {};
 
-//   return prisma.user.create({
-//     data: {
-//       email: data.email,
-//       password_hash: hashedPassword,
-//       role: data.role.toUpperCase() as UserRole,
-//       teacherId,
-//     },
-//     select: USER_SELECT,
-//   });
-// };
+  if (data.full_name !== undefined) {
+    teacherData.full_name = data.full_name;
+  }
 
-// // Update user
-// const updateUser = async (userId: string, data: UpdateUserInput) => {
-//   const user = await prisma.user.findUnique({
-//     where: { userId },
-//   });
-//   if (!user) throw new Error('P2025'); // Prisma record not found error code to catch
+  if (data.teacher_code !== undefined) {
+    teacherData.teacher_code = data.teacher_code;
+  }
 
-//   const updateData: any = {};
-//   if (data.email) updateData.email = data.email;
-//   if (data.role) updateData.role = data.role.toUpperCase() as UserRole;
+  if (data.email !== undefined) {
+    userData.email = data.email;
+  }
 
-//   if (user.teacherId && (data.name || data.code)) {
-//     await prisma.teacher.update({
-//       where: { teacherId: user.teacherId },
-//       data: {
-//         fullName: data.name,
-//         teacherCode: data.code,
-//       },
-//     });
-//   }
+  if (data.password !== undefined) {
+    userData.password_hash = await hashPassword(data.password);
+  }
 
-//   return prisma.user.update({
-//     where: { userId },
-//     data: updateData,
-//     select: USER_SELECT,
-//   });
-// };
+  if (Object.keys(userData).length > 0) {
+    teacherData.user = {
+      update: userData,
+    };
+  }
 
-// // Delete user
-// const deleteUser = async (userId: string) => {
-//   const user = await prisma.user.findUnique({
-//     where: { userId },
-//   });
-//   if (!user) throw new Error('P2025');
-
-//   // Delete user first
-//   await prisma.user.delete({
-//     where: { userId },
-//   });
-
-//   // Clean up teacher profile
-//   if (user.teacherId) {
-//     await prisma.teacher.delete({
-//       where: { teacherId: user.teacherId },
-//     });
-//   }
-// };
-
+  return prisma.teacher.update({
+    where: { id_teacher },
+    data: teacherData,
+    select: {
+      id_teacher: true,
+      full_name: true,
+      teacher_code: true,
+      user: {
+        select: {
+          id_user: true,
+          email: true,
+          role: true,
+          is_active: true,
+        },
+      },
+    },
+  });
+};
 export const UserService = {
-  //   getAllUsers,
-  //   getUserById,
-  //   createUser,
-  //   updateUser,
-  //   deleteUser,
-  //   searchUsersByRole,
+  getAllUser,
   findUserByEmail,
   findUserByID,
+  getTeacherById,
+  getTeacherByUserId,
+  updateTeacher,
 };
+

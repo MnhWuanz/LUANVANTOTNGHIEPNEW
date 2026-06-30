@@ -4,4 +4,5 @@ dist
 .git
 .vscode
 Dockerfile
+.understand-anything
 .env

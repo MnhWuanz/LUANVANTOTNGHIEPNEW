@@ -1,10 +1,10 @@
-import { getMeThunk, loginThunk, registerThunk } from '@/features/auth/store/auth-thunk';
+import { getMeThunk, loginThunk, logoutThunk } from '@/features/auth/store/auth-thunk';
 import type { User } from '@/features/users/types/user-type';
 import { createSlice } from '@reduxjs/toolkit'
 export interface AuthState {
   user: User | null;
   loading: boolean;
-    initialized:boolean;
+  initialized:boolean;
   error: string | null;
 }
 const initialState: AuthState = {
@@ -20,7 +20,6 @@ export const authSlice=createSlice({
         logout:(state)=>{
             state.user=null;
             localStorage.removeItem("accessToken");
-            localStorage.removeItem("refreshToken");
         },
          markInitialized: (state) => {
       state.initialized = true;
@@ -35,28 +34,14 @@ export const authSlice=createSlice({
         .addCase(loginThunk.fulfilled,(state,action)=>{
             state.loading=false;
             state.user=action.payload.user;
+            state.initialized=true;
             localStorage.setItem("accessToken",action.payload.accessToken);
-            localStorage.setItem("refreshToken",action.payload.refreshToken);
         })
         .addCase(loginThunk.rejected,(state,action)=>{
             state.loading=false;
             state.error=action.payload as string;
         })
-        .addCase(registerThunk.pending,(state)=>{
-            state.loading=true;
-            state.error=null;
-        })
-        .addCase(registerThunk.fulfilled,(state,action)=>{
-            state.loading=false;
-            state.user=action.payload.user;
-            localStorage.setItem("accessToken",action.payload.accessToken);
-            localStorage.setItem("refreshToken",action.payload.refreshToken);
-        })
-        .addCase(registerThunk.rejected,(state,action)=>{
-            state.loading=false;
-            state.error=action.payload as string;
-        })
-         .addCase(getMeThunk.pending,(state)=>{
+        .addCase(getMeThunk.pending,(state)=>{
              state.loading=true;
             state.error=null;
         })
@@ -72,9 +57,18 @@ export const authSlice=createSlice({
             state.error=action.payload as string;
             state.initialized=true;
         })
+        .addCase(logoutThunk.fulfilled,(state)=>{
+            state.user=null;
+            state.error=null;
+        })
+        .addCase(logoutThunk.rejected,(state,action)=>{
+            state.user=null;
+            state.error=action.payload as string;
+        })
         
     }
 })
 export const { logout, markInitialized } = authSlice.actions;
 
 export default authSlice.reducer;
+

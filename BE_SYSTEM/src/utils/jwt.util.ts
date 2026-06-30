@@ -15,7 +15,7 @@ const getJwtSecret = (envName: 'JWT_ACCESS_SECRET' | 'JWT_REFRESH_SECRET') => {
   return secret as Secret;
 };
 
-const ACCESS_TOKEN_EXPIRES_IN = (process.env.ACCESS_TOKEN_EXPIRES_IN ||
+const ACCESS_TOKEN_EXPIRES_IN = (process.env.JWT_ACCESS_EXPIRES ||
   '15m') as SignOptions['expiresIn'];
 
 export function signAccessToken(user: JwtUserPayload) {
@@ -32,7 +32,7 @@ export function signAccessToken(user: JwtUserPayload) {
   );
 }
 
-const REFRESH_TOKEN_EXPIRES_IN = (process.env.REFRESH_TOKEN_EXPIRES_IN ||
+const REFRESH_TOKEN_EXPIRES_IN = (process.env.JWT_REFRESH_EXPIRES ||
   '7d') as SignOptions['expiresIn'];
 
 export function signRefreshToken(user: JwtUserPayload) {

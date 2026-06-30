@@ -1,24 +1,9 @@
 import type { User } from '@/features/users/types/user-type';
 
 export interface Teacher extends User {
-  id: string;
+  id_teacher: string;
 
-  userId: string;
-
-  // mã giáo viên
-  teacherCode: string;
-
-  bio?: string | null;
-
-  specialization?: string | null;
-
-  qualification?: string | null;
-
-  yearsOfExperience?: number | null;
-
-  // ghi chú
-  note?: string | null;
-
-  // ngày tham gia
-  joinedAt?: string | null;
+  id_user: string;
+  full_name:string|null
+  teacher_code: string;
 }

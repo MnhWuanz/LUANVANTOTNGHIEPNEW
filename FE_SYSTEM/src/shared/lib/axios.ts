@@ -2,12 +2,12 @@
 import { HTTP_STATUS } from "@/shared/types/http-status";
 import axios from "axios";
 
-
 export const axiosCilent=axios.create({
     baseURL:import.meta.env.VITE_API_URL,
     headers:{
         "Content-Type":"application/json"
-    }
+    },
+    withCredentials:true
 })
 axiosCilent.interceptors.request.use((config)=>{
     const token=localStorage.getItem("accessToken")
@@ -34,7 +34,10 @@ axiosCilent.interceptors.response.use((response)=>{
     return response
 }, async (error)=>{
     const originalRequest=error.config;
-    if(error.response?.status===HTTP_STATUS.UNAUTHORIZED && !originalRequest._retry){
+    const requestUrl = originalRequest?.url || '';
+    const skipRefresh = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/refresh');
+
+    if(error.response?.status===HTTP_STATUS.UNAUTHORIZED && originalRequest && !originalRequest._retry && !skipRefresh){
         if(isRefreshing){
             return new Promise((resolve, reject) => {
                 failedQueue.push({
@@ -49,28 +52,21 @@ axiosCilent.interceptors.response.use((response)=>{
         originalRequest._retry = true;
         isRefreshing=true;
         try {
-            const refreshToken=localStorage.getItem('refreshToken');
-            if(!refreshToken){
-                throw new Error("Refresh token not found")
-            }
-            const res=await axios.post(`${import.meta.env.VITE_API_URL}/auth/refresh-token`,{
-                refreshToken
-            })
-            const {accessToken,refreshToken:newRefreshToken}=res.data.data;
+            const res=await axios.post(`${import.meta.env.VITE_API_URL}/auth/refresh`, undefined, { withCredentials: true })
+            const {accessToken}=res.data.data;
             localStorage.setItem("accessToken",accessToken);
-            localStorage.setItem("refreshToken",newRefreshToken);
             processQueue(null, accessToken);
             originalRequest.headers.Authorization=`Bearer ${accessToken}`;
             return axiosCilent(originalRequest);
         } catch (refreshError) {
             processQueue(refreshError);
             localStorage.removeItem("accessToken");
-            localStorage.removeItem("refreshToken");
             window.location.href="/auth/login";
-            throw Promise.reject(refreshError);
+            return Promise.reject(refreshError);
         }finally{
             isRefreshing=false;
         }
 
     }
+    return Promise.reject(error)
 })

@@ -1,6 +1,5 @@
 import { createBrowserRouter } from 'react-router-dom';
 
-import AppInit from '../init/AppInit';
 
 import AuthLayout from '../layouts/AuthLayout';
 
@@ -8,8 +7,8 @@ import MainLayout from '@/app/layouts/MainLayout';
 
 import ProtectedRoute from './ProtectedRoute';
 import AuthLogin from '@/features/auth/pages/AuthLogin';
-import AuthRegister from '@/features/auth/pages/AuthRegister';
-import DashBoardPage from '@/features/dashboard/pages/DashBoard';
+
+import UserProfilePage from '@/features/users/pages/UserProfilePage';
 
 
 
@@ -26,10 +25,7 @@ export const router = createBrowserRouter([
             path: 'login',
             element: <AuthLogin />,
           },
-          {
-            path: 'register',
-            element: <AuthRegister />,
-          },
+
         ],
       },
     ],
@@ -49,11 +45,12 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <DashBoardPage />,
+            // element: <DashBoardPage />,
+            element: <h1>Dashboard</h1>
           },
           {
             path: 'profile',
-            // element: <UserProfilePage />,
+            element: <UserProfilePage />,
           },
           {
             path: 'students',

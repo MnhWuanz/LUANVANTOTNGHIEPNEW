@@ -18,7 +18,7 @@ const isAdmin = (req: Request, res: Response, next: NextFunction) => {
 const isTeacher = (req: Request, res: Response, next: NextFunction) => {
   const user = (req as any).user;
   const role = user?.role?.toUpperCase();
-  if (role === 'TEACHER' || role === 'ADMIN') {
+  if (role === 'TEACHER') {
     next();
   } else {
     res.status(403).json({ message: 'Không có quyền truy cập' });
@@ -26,3 +26,4 @@ const isTeacher = (req: Request, res: Response, next: NextFunction) => {
 };
 
 export { isLogin, isAdmin, isTeacher };
+

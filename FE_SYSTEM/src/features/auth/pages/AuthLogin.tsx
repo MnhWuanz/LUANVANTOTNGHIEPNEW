@@ -5,7 +5,6 @@ import { loginFormFields } from '@/features/auth/constants/login-form-fields';
 import InputCustom from '@/shared/components/input/InputCustom';
 import { FormFieldType } from '@/shared/types/form-field-type';
 import InputPasswordCustom from '@/shared/components/input/InputPasswordCustom';
-import { Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/app/redux/hooks';
 import { useNotification } from '@/shared/hooks/useNotification';
 import { loginThunk } from '@/features/auth/store/auth-thunk';
@@ -20,7 +19,6 @@ export default function AuthLogin() {
     const dispatch = useAppDispatch()
     const {loading} = useAppSelector((state) => state.auth)
       const { showNotification } = useNotification();
-
     const onFinish = async (values: LoginFromValues) => {
         try {
             await dispatch(loginThunk(values)).unwrap();
@@ -61,20 +59,13 @@ export default function AuthLogin() {
             })()}
           </Form.Item>
         ))}
-          <div className="mb-6 flex items-center justify-end">
-          <Link to="/auth/forgot-password" className="text-sm text-blue-600 hover:text-blue-500">
-            Quên mật khẩu?
-          </Link>
-        </div>
         <Form.Item className="mb-4 text-center">
           <Button loading={loading} htmlType="submit" type="primary" block>
             Đăng nhập
           </Button>
-          <Link to="/auth/register" className="text-sm text-blue-600 hover:text-blue-500">
-            Bạn chưa có tài khoản? Đăng ký ngay
-          </Link>
         </Form.Item>
       </Form>
     </CardCustom>
   )
 }
+

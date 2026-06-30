@@ -1,117 +1,83 @@
-// import { Request, Response } from 'express';
-// import { createUserSchema, updateUserSchema } from 'validation/user.validation';
+import { Request, Response } from 'express';
+import { UserService } from 'services/user.service';
 
-// type ReqWithId = Request<{ id: string }>;
+const getAllUser = async (req: Request, res: Response) => {
+  try {
+    const result = await UserService.getAllUser();
+    if (result) {
+      return res.status(200).json({
+        success: true,
+        message: 'Get all users successfully',
+        data: result,
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error',
+    });
+  }
+};
+const getTeacherById = async (req: Request, res: Response) => {
+  try {
+    const { id_teacher } = req.params;
+    const result = await UserService.getTeacherById(Number(id_teacher));
+    if (result) {
+      return res.status(200).json({
+        success: true,
+        message: 'Get teacher by id successfully',
+        data: result,
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error',
+    });
+  }
+};
 
-// // GET /api/users
-// const getAll = async (req: Request, res: Response) => {
-//   try {
-//     const users = await UserService.getAllUsers();
-//     res.json({ success: true, data: users });
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: 'Lỗi server' });
-//   }
-// };
+const updateTeacher = async (req: Request, res: Response) => {
+  const id_teacher = Number(req.params.id_teacher);
 
-// // GET /api/users/:id
-// const getOne = async (req: ReqWithId, res: Response) => {
-//   try {
-//     const id = req.params.id;
-//     const user = await UserService.getUserById(id);
+  const result = await UserService.updateTeacher(id_teacher, req.body);
 
-//     if (!user) {
-//       res.status(404).json({ success: false, message: 'Không tìm thấy user' });
-//       return;
-//     }
+  return res.status(200).json({
+    success: true,
+    message: 'Update teacher successfully',
+    data: result,
+  });
+};
+const updateMyTeacher = async (req: Request, res: Response) => {
+  const id_user = req.user?.id_user;
 
-//     res.json({ success: true, data: user });
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: 'Lỗi server' });
-//   }
-// };
+  if (!id_user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Unauthorized',
+    });
+  }
 
-// // POST /api/users
-// const create = async (req: Request, res: Response) => {
-//   try {
-//     const parsed = createUserSchema.safeParse(req.body);
-//     if (!parsed.success) {
-//       res.status(400).json({
-//         success: false,
-//         message: 'Dữ liệu không hợp lệ',
-//         errors: parsed.error.flatten().fieldErrors,
-//       });
-//       return;
-//     }
+  const teacher = await UserService.getTeacherByUserId(id_user);
+  if (!teacher) {
+    return res.status(404).json({
+      success: false,
+      message: 'Teacher not found',
+    });
+  }
 
-//     const user = await UserService.createUser(parsed.data);
-//     res.status(201).json({ success: true, data: user });
-//   } catch (error: any) {
-//     if (error.code === 'P2002') {
-//       res.status(409).json({
-//         success: false,
-//         message: `${error.meta?.target} đã tồn tại`,
-//       });
-//       return;
-//     }
-//     res.status(500).json({ success: false, message: 'Lỗi server' });
-//   }
-// };
+  const result = await UserService.updateTeacher(teacher.id_teacher, req.body);
 
-// // PUT /api/users/:id
-// const update = async (req: ReqWithId, res: Response) => {
-//   try {
-//     const id = req.params.id;
+  return res.status(200).json({
+    success: true,
+    message: 'Update my teacher successfully',
+    data: result,
+  });
+};
+export const UserController = {
+  getAllUser,
+  getTeacherById,
+  updateTeacher,
+  updateMyTeacher,
+};
 
-//     const parsed = updateUserSchema.safeParse(req.body);
-//     if (!parsed.success) {
-//       res.status(400).json({
-//         success: false,
-//         message: 'Dữ liệu không hợp lệ',
-//         errors: parsed.error.flatten().fieldErrors,
-//       });
-//       return;
-//     }
-
-//     const user = await UserService.updateUser(id, parsed.data);
-//     res.json({ success: true, data: user });
-//   } catch (error: any) {
-//     if (error.code === 'P2025' || error.message === 'P2025') {
-//       res.status(404).json({ success: false, message: 'Không tìm thấy user' });
-//       return;
-//     }
-//     res.status(500).json({ success: false, message: 'Lỗi server' });
-//   }
-// };
-
-// // DELETE /api/users/:id
-// const remove = async (req: ReqWithId, res: Response) => {
-//   try {
-//     const id = req.params.id;
-//     await UserService.deleteUser(id);
-//     res.json({ success: true, message: 'Xoá user thành công' });
-//   } catch (error: any) {
-//     if (error.code === 'P2025' || error.message === 'P2025') {
-//       res.status(404).json({ success: false, message: 'Không tìm thấy user' });
-//       return;
-//     }
-//     res.status(500).json({ success: false, message: 'Lỗi server' });
-//   }
-// };
-
-// const searchUsersByRole = async (req: ReqWithId, res: Response) => {
-//   try {
-//     const { role } = req.body as { role: string };
-//     const { users, total_items } = await UserService.searchUsersByRole(role);
-//     res.json({ success: true, data: users, total_items });
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: 'Lỗi server' });
-//   }
-// };
-// export const UserController = {
-//   getAll,
-//   getOne,
-//   create,
-//   update,
-//   remove,
-//   searchUsersByRole,
-// };

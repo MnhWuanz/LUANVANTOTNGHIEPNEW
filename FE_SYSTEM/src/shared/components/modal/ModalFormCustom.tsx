@@ -13,7 +13,6 @@ import InputCustom from '../input/InputCustom';
 import InputNumberCustom from '../input/InputNumberCustom';
 import InputPasswordCustom from '../input/InputPasswordCustom';
 import InputTextAreaCustom from '../input/InputTextAreaCustom';
-import UploadImageCustom from '../upload/UploadImageCustom';
 import SelectFetchCustom from '../select/SelectFetchCustom';
 import TimePickerCustom from '../timepicker/TimePickerCustom';
 import { formatFormValues } from '@/shared/utils/form';
@@ -175,14 +174,7 @@ const ModalFormCustom = <T,>({
                                   {...field.props}
                                 />
                               );
-                            case FormFieldType.ImageUpload:
-                              return (
-                                <UploadImageCustom
-                                  value={form.getFieldValue(field.name)}
-                                  onChange={(value) => form.setFieldsValue({ [field.name]: value })}
-                                  {...field.props}
-                                />
-                              );
+                           
                             case FormFieldType.InputNumber:
                               return (
                                 <InputNumberCustom
