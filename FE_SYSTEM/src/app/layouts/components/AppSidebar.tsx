@@ -1,6 +1,12 @@
-import { Image, Layout, Menu } from 'antd';
+﻿import { Image, Layout, Menu } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { DashboardOutlined, UserOutlined, BookOutlined, DesktopOutlined } from '@ant-design/icons';
+import {
+  BookOutlined,
+  CalendarOutlined,
+  DashboardOutlined,
+  DesktopOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
 import YoeduLogo from '@/assets/images/yoedu-logo.svg';
 import { useTheme } from '@/app/providers/theme/hooks/useTheme';
 
@@ -12,7 +18,6 @@ interface AppSidebarProps {
 
 const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed }) => {
   const { theme } = useTheme();
-
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -21,11 +26,16 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed }) => {
       key: '/',
       icon: <DashboardOutlined />,
       label: 'Dashboard',
-    }, 
+    },
     {
-      key: '/kiosks', 
+      key: '/kiosks',
       icon: <DesktopOutlined />,
       label: 'Thiết bị',
+    },
+    {
+      key: '/attendance-sessions',
+      icon: <CalendarOutlined />,
+      label: 'Điểm danh',
     },
     {
       key: '/students',
@@ -36,16 +46,6 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed }) => {
       key: '/teachers',
       icon: <UserOutlined />,
       label: 'Giáo viên',
-    },
-    {
-      key: '/courses',
-      icon: <BookOutlined />,
-      label: 'Khóa học',
-    },
-    {
-      key: '/enrollments',
-      icon: <BookOutlined />,
-      label: 'Tuyển sinh',
     },
   ];
 

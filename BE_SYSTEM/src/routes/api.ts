@@ -45,6 +45,12 @@ const apiRoutes = (app: Express) => {
   );
   // ==================== ATTENDANCE_SESSION ROUTES ====================
   router.post(
+    '/attendance-sessions/generate',
+    isLogin,
+    isAdmin,
+    AttendanceSessionController.generateSession,
+  );
+  router.post(
     '/attendace-sessions/generate',
     isLogin,
     isAdmin,
@@ -96,5 +102,6 @@ const apiRoutes = (app: Express) => {
   app.use('/api', router);
 };
 export default apiRoutes;
+
 
 

@@ -11,6 +11,8 @@ import AuthLogin from '@/features/auth/pages/AuthLogin';
 import UserProfilePage from '@/features/users/pages/UserProfilePage';
 import KioskPage from '@/features/kisok/pages/kioskPage';
 import DashBoardPage from '@/features/dashboard/pages/DashBoard';
+import AttendanceSessionPage from '@/features/attendance-sessions/pages/AttendanceSessionPage';
+import TeacherPage from '@/features/teachers/pages/TeacherPage';
 
 
 
@@ -58,12 +60,16 @@ export const router = createBrowserRouter([
             element: <KioskPage />
           },
           {
+            path: 'attendance-sessions',
+            element: <AttendanceSessionPage />
+          },
+          {
             path: 'students',
             // element: <StudentPage />,
           },
           {
             path: 'teachers',
-            // element: <TeacherPage />,
+            element: <TeacherPage />,
           },
           {
             path: 'courses',
@@ -78,5 +84,7 @@ export const router = createBrowserRouter([
     ],
   },
 ]);
+
+
 
 

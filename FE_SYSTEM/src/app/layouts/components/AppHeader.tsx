@@ -1,4 +1,4 @@
-import { Layout, Dropdown, Badge, Switch } from 'antd';
+﻿import { Layout, Dropdown, Badge, Switch } from 'antd';
 import {
   MenuUnfoldOutlined,
   MenuFoldOutlined,
@@ -27,6 +27,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ collapsed, setCollapsed }) => {
   const { user } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const displayName = user?.teacher?.full_name || user?.email;
 
   const menuItems = [
     {
@@ -56,19 +57,15 @@ const AppHeader: React.FC<AppHeaderProps> = ({ collapsed, setCollapsed }) => {
     <Header
       className={`flex justify-between items-center px-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}
     >
-      {/* LEFT */}
       <div className="text-xl cursor-pointer" onClick={() => setCollapsed(!collapsed)}>
         {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
       </div>
 
-      {/* RIGHT */}
       <div className="flex items-center gap-6">
-        {/* Notification */}
         <Badge count={5} size="small">
           <BellOutlined className="text-lg cursor-pointer" />
         </Badge>
 
-        {/* Theme switch */}
         <Switch
           checked={theme === 'dark'}
           onChange={toggleTheme}
@@ -76,15 +73,12 @@ const AppHeader: React.FC<AppHeaderProps> = ({ collapsed, setCollapsed }) => {
           unCheckedChildren={<MoonOutlined />}
         />
 
-        {/* User dropdown */}
         <Dropdown menu={{ items: menuItems }} placement="bottomRight">
           <div className="flex items-center gap-2 cursor-pointer">
             <UserAvatar size={46} />
 
             <div className="flex flex-col leading-tight">
-              <span className="text-red-500 text-sm font-medium">
-                {user?.fullName || user?.email}
-              </span>
+              <span className="text-red-500 text-sm font-medium">{displayName}</span>
               <span className="text-xs text-gray-400">{user?.role}</span>
             </div>
           </div>

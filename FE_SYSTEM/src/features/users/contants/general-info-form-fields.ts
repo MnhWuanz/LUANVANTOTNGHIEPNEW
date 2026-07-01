@@ -1,8 +1,9 @@
-import { FormFieldType } from '@/shared/types/form-field-type';
-
+﻿import { FormFieldType } from '@/shared/types/form-field-type';
 import { rules } from '@/shared/utils/rules';
 import type { FormField } from '@/shared/components/modal/ModalFormCustom';
 import type { User } from '../types/user-type';
+
+type GetFieldValue = (name: string) => unknown;
 
 export const generalInfoFormFields: FormField<User>[] = [
   {
@@ -54,11 +55,12 @@ export const generalInfoFormFields: FormField<User>[] = [
         message: 'Vui lòng nhập mật khẩu',
       },
       rules.password,
-      ({ getFieldValue }) => ({
-        validator(_, value) {
+      ({ getFieldValue }: { getFieldValue: GetFieldValue }) => ({
+        validator(_: unknown, value?: string) {
           if (!value || getFieldValue('password') === value) {
             return Promise.resolve();
           }
+
           return Promise.reject(new Error('Mật khẩu không khớp'));
         },
       }),

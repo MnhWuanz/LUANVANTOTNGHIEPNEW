@@ -1,186 +1,186 @@
-import useTable from '@/shared/hooks/useTable';
-import PageHeader from '@/shared/components/page/PageHeader';
-import { Button } from 'antd';
-import ModalFormCustom, { type SectionForm } from '@/shared/components/modal/ModalFormCustom';
-import { useFormModal } from '@/shared/hooks/useFormModal';
-import { FormModalMode } from '@/shared/types/form-modal-mode-type';
-import { userRoleAdminApi } from '@/features/users/api/user-api';
+﻿import PageHeader from '@/shared/components/page/PageHeader';
 import FilterTableCustom from '@/shared/components/table/FilterTableCustom';
-import { generalInfoFormFields } from '@/features/users/contants/general-info-form-fields';
-import { teacherRoleAdminApi } from '../api/teacher-api';
-import type { Teacher } from '../types/teacher-type';
-import type { TeacherFilterParams } from '../types/teacher-filter-params-type';
-import { teacherFormFields } from '../constants/teacher-form-fields';
-import { teacherFilters } from '../constants/teacher-filter-table';
-import {
-  EyeOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  CheckOutlined,
-  CloseOutlined,
-} from '@ant-design/icons';
-import StatusTag from '@/shared/components/status/StatusTag';
-import ActionGroup from '@/shared/components/table/ActionGroup';
-import { USER_STATUS } from '@/features/users/types/user-status-type';
 import TablePaginationCustom from '@/shared/components/table/TablePaginationCustom';
+import ModalCustom from '@/shared/components/modal/ModalCustom';
+import useTable from '@/shared/hooks/useTable';
+import { useNotification } from '@/shared/hooks/useNotification';
+import {
+  Alert,
+  Button,
+  Descriptions,
+  Form,
+  Input,
+  Space,
+  Tag,
+  Typography,
+} from 'antd';
+import { EditOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons';
+import { useEffect, useState } from 'react';
+import { teacherRoleAdminApi } from '../api/teacher-api';
+import { teacherFilters } from '../constants/teacher-filter-table';
+import type { TeacherFilterParams } from '../types/teacher-filter-params-type';
+import type { Teacher, UpdateTeacherPayload } from '../types/teacher-type';
+
+function formatDateTime(value?: string | null) {
+  if (!value) {
+    return '-';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '-';
+  }
+
+  return date.toLocaleString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+const TeacherStatusTag = ({ teacher }: { teacher: Teacher }) => (
+  <Tag color={teacher.is_active ? 'success' : 'default'}>{teacher.statusText}</Tag>
+);
 
 const TeacherPage = () => {
-  const { getAll, create, update } = teacherRoleAdminApi;
-  const { changeStatus, remove } = userRoleAdminApi;
-
-  const { open, mode, selectedRecord, openCreate, openView, openEdit, close } =
-    useFormModal<Teacher>();
+  const { getAll, update } = teacherRoleAdminApi;
+  const { showNotification } = useNotification();
+  const [viewRecord, setViewRecord] = useState<Teacher | null>(null);
+  const [editingRecord, setEditingRecord] = useState<Teacher | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form] = Form.useForm<UpdateTeacherPayload>();
 
   const {
     data: teachers,
-
     loading,
-
     pagination,
-
     filterValues,
-
     handleFilterChange,
-
     handleFilterSubmit,
-
     handleFilterReset,
-
     handleChangePage,
-
-    handleDelete,
-
-    handleChangeStatus,
-
     refetch,
   } = useTable<Teacher, TeacherFilterParams>({
     fetchApi: getAll,
-    removeApi: remove,
-    changeStatusApi: changeStatus,
   });
 
-  const sectionsTeacherForm: SectionForm<Teacher>[] = [
-    {
-      key: 'general',
-      label: 'Thông tin chung',
-      fields: generalInfoFormFields,
-    },
-    {
-      key: 'teacher',
-      label: 'Thông tin giáo viên',
-      fields: teacherFormFields,
-    },
-  ];
+  useEffect(() => {
+    if (editingRecord) {
+      form.setFieldsValue({
+        full_name: editingRecord.full_name,
+        teacher_code: editingRecord.teacher_code,
+        email: editingRecord.email,
+        password: undefined,
+      });
+    } else {
+      form.resetFields();
+    }
+  }, [editingRecord, form]);
+
+  const handleUpdateTeacher = async (values: UpdateTeacherPayload) => {
+    if (!editingRecord) {
+      return;
+    }
+
+    const payload: UpdateTeacherPayload = {
+      full_name: values.full_name?.trim(),
+      teacher_code: values.teacher_code?.trim(),
+      email: values.email?.trim(),
+    };
+
+    if (values.password?.trim()) {
+      payload.password = values.password.trim();
+    }
+
+    try {
+      setSaving(true);
+      await update(editingRecord.id_teacher, payload);
+      showNotification('success', 'Cập nhật giáo viên', 'Thông tin giáo viên đã được cập nhật');
+      setEditingRecord(null);
+      refetch();
+    } catch (error: unknown) {
+      const message =
+        typeof error === 'object' && error !== null && 'response' in error
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined;
+
+      showNotification('error', 'Cập nhật giáo viên thất bại', message || 'Đã có lỗi xảy ra');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const columns = [
     {
       title: 'Mã giáo viên',
-      dataIndex: 'teacherCode',
+      dataIndex: 'teacher_code',
+      render: (value: string) => <Typography.Text code>{value}</Typography.Text>,
     },
     {
       title: 'Họ tên',
-      dataIndex: 'fullName',
+      dataIndex: 'full_name',
     },
-
     {
       title: 'Email',
       dataIndex: 'email',
     },
-
-    {
-      title: 'Số điện thoại',
-      dataIndex: 'phone',
-    },
-
-    {
-      title: 'Địa chỉ',
-      dataIndex: 'address',
-    },
-
     {
       title: 'Trạng thái',
-      dataIndex: 'status',
       align: 'center' as const,
-      render: (_: any, record: any) => {
-        return <StatusTag status={record.status} statusText={record.statusText} />;
-      },
+      render: (_: unknown, record: Teacher) => <TeacherStatusTag teacher={record} />,
     },
-
+    {
+      title: 'Đăng nhập cuối',
+      dataIndex: 'last_login',
+      render: (value: string | null) => formatDateTime(value),
+    },
+    {
+      title: 'Ngày tạo tài khoản',
+      dataIndex: 'createdAt',
+      render: (value: string) => formatDateTime(value),
+    },
     {
       title: 'Tác vụ',
       align: 'center' as const,
-      render: (_: any, record: Teacher) => {
-        return (
-          <ActionGroup<Teacher>
-            record={record}
-            actions={[
-              {
-                show: () => true,
-                icon: <EyeOutlined />,
-                tooltip: 'Chi tiết',
-                onClick: openView,
-              },
-              {
-                show: (r) => r.status !== USER_STATUS.DELETED,
-                icon: <EditOutlined />,
-                tooltip: 'Sửa',
-                onClick: openEdit,
-              },
-
-              {
-                show: (r) => r.status === USER_STATUS.ACTIVE,
-                icon: <CloseOutlined />,
-                tooltip: 'Ngưng hoạt động',
-                danger: true,
-                onClick: () => handleChangeStatus(record.userId),
-                isPopconfirm: true,
-              },
-
-              {
-                show: (r) => r.status === USER_STATUS.INACTIVE,
-                icon: <CheckOutlined />,
-                tooltip: 'Kích hoạt',
-                color: '#52c41a',
-                onClick: () => handleChangeStatus(record.userId),
-                isPopconfirm: true,
-              },
-
-              {
-                show: (r) => r.status === USER_STATUS.INACTIVE,
-                icon: <DeleteOutlined />,
-                tooltip: 'Xóa',
-                danger: true,
-                onClick: () => handleDelete(record.userId),
-                isPopconfirm: true,
-              },
-            ]}
-          />
-        );
-      },
+      width: 140,
+      render: (_: unknown, record: Teacher) => (
+        <Space>
+          <Button type="link" icon={<EyeOutlined />} onClick={() => setViewRecord(record)} />
+          <Button type="link" icon={<EditOutlined />} onClick={() => setEditingRecord(record)} />
+        </Space>
+      ),
     },
   ];
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col gap-4">
       <PageHeader
         title="Quản lý giáo viên"
-        subtitle="Danh sách giáo viên"
+        subtitle="Danh sách tài khoản giáo viên được đồng bộ từ hệ thống đào tạo"
         extra={
-          <Button type="primary" onClick={openCreate}>
-            + Thêm giáo viên
+          <Button icon={<ReloadOutlined />} loading={loading} onClick={refetch}>
+            Làm mới
           </Button>
         }
       />
 
-      <div className="mb-4">
-        <FilterTableCustom
-          dataFilters={teacherFilters}
-          values={filterValues}
-          onChange={handleFilterChange}
-          onReset={handleFilterReset}
-          onSubmit={handleFilterSubmit}
-        />
-      </div>
+      <Alert
+        type="info"
+        showIcon
+        message="Dữ liệu giáo viên được đồng bộ"
+        description="Trang này hỗ trợ xem và cập nhật thông tin tài khoản giáo viên."
+      />
+
+      <FilterTableCustom
+        dataFilters={teacherFilters}
+        values={filterValues}
+        onChange={handleFilterChange}
+        onReset={handleFilterReset}
+        onSubmit={handleFilterSubmit}
+      />
 
       <TablePaginationCustom<Teacher>
         columns={columns}
@@ -190,21 +190,104 @@ const TeacherPage = () => {
         onChangePage={handleChangePage}
       />
 
-      <ModalFormCustom<Teacher>
-        open={open}
-        title="Giáo Viên"
-        mode={mode}
-        initialValues={selectedRecord}
-        disabled={mode === FormModalMode.VIEW}
-        onCancel={close}
-        onSuccess={refetch}
-        onSubmit={
-          mode === FormModalMode.CREATE
-            ? create
-            : (values) => update(selectedRecord!.userId, values)
-        }
-        sections={sectionsTeacherForm}
-      />
+      <ModalCustom
+        open={!!viewRecord}
+        title="Thông tin giáo viên"
+        onCancel={() => setViewRecord(null)}
+        width={720}
+      >
+        {viewRecord && (
+          <Descriptions
+            bordered
+            size="small"
+            column={1}
+            items={[
+              {
+                key: 'teacher_code',
+                label: 'Mã giáo viên',
+                children: <Typography.Text code>{viewRecord.teacher_code}</Typography.Text>,
+              },
+              {
+                key: 'full_name',
+                label: 'Họ tên',
+                children: viewRecord.full_name,
+              },
+              {
+                key: 'email',
+                label: 'Email',
+                children: viewRecord.email,
+              },
+              {
+                key: 'status',
+                label: 'Trạng thái',
+                children: <TeacherStatusTag teacher={viewRecord} />,
+              },
+              {
+                key: 'last_login',
+                label: 'Đăng nhập cuối',
+                children: formatDateTime(viewRecord.last_login),
+              },
+              {
+                key: 'createdAt',
+                label: 'Ngày tạo tài khoản',
+                children: formatDateTime(viewRecord.createdAt),
+              },
+            ]}
+          />
+        )}
+      </ModalCustom>
+
+      <ModalCustom
+        open={!!editingRecord}
+        title="Cập nhật giáo viên"
+        onCancel={() => setEditingRecord(null)}
+        width={720}
+        footer={null}
+      >
+        <Form form={form} layout="vertical" onFinish={handleUpdateTeacher}>
+          <Form.Item
+            name="full_name"
+            label="Họ tên"
+            rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}
+          >
+            <Input placeholder="Nhập họ tên" />
+          </Form.Item>
+
+          <Form.Item
+            name="teacher_code"
+            label="Mã giáo viên"
+            rules={[{ required: true, message: 'Vui lòng nhập mã giáo viên' }]}
+          >
+            <Input placeholder="Nhập mã giáo viên" />
+          </Form.Item>
+
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[
+              { required: true, message: 'Vui lòng nhập email' },
+              { type: 'email', message: 'Email không hợp lệ' },
+            ]}
+          >
+            <Input placeholder="Nhập email" />
+          </Form.Item>
+
+          <Form.Item
+            name="password"
+            label="Mật khẩu mới"
+            rules={[{ min: 6, message: 'Mật khẩu tối thiểu 6 ký tự' }]}
+          >
+            <Input.Password placeholder="Để trống nếu không đổi mật khẩu" />
+          </Form.Item>
+
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setEditingRecord(null)}>Hủy</Button>
+            <Button type="primary" htmlType="submit" loading={saving}>
+              Lưu
+            </Button>
+          </div>
+        </Form>
+      </ModalCustom>
     </div>
   );
 };
