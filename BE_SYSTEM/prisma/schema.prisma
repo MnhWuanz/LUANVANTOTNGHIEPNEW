@@ -217,7 +217,7 @@ model Kiosk {
 
 model Activation_Code {
   id_activation_code Int      @id @default(autoincrement())
-  code               Int      @unique
+  code               String   @unique
   is_used            Boolean  @default(false)
   is_active          Boolean  @default(false)
   created_at         DateTime @default(now())
@@ -268,11 +268,11 @@ model Attendance_Record {
 model Sync_Batch {
   id_sync_batch Int @id @default(autoincrement())
 
-  total_records Int       @default(0)
-  total_created Int       @default(0)
-  total_updated Int       @default(0)
+  total_records Int      @default(0)
+  total_created Int      @default(0)
+  total_updated Int      @default(0)
   summary       Json?
-  synced_at     DateTime  @default(now())
+  synced_at     DateTime @default(now())
 
   @@map("sync_batches")
 }

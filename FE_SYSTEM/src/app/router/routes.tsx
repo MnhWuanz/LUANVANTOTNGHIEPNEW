@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+﻿import { createBrowserRouter } from 'react-router-dom';
 
 
 import AuthLayout from '../layouts/AuthLayout';
@@ -9,6 +9,8 @@ import ProtectedRoute from './ProtectedRoute';
 import AuthLogin from '@/features/auth/pages/AuthLogin';
 
 import UserProfilePage from '@/features/users/pages/UserProfilePage';
+import KioskPage from '@/features/kisok/pages/kioskPage';
+import DashBoardPage from '@/features/dashboard/pages/DashBoard';
 
 
 
@@ -45,12 +47,15 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            // element: <DashBoardPage />,
-            element: <h1>Dashboard</h1>
+            element: <DashBoardPage />
           },
           {
             path: 'profile',
             element: <UserProfilePage />,
+          },
+          {
+            path: 'kiosks',
+            element: <KioskPage />
           },
           {
             path: 'students',
@@ -73,3 +78,5 @@ export const router = createBrowserRouter([
     ],
   },
 ]);
+
+

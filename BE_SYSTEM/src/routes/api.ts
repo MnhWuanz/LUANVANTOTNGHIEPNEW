@@ -1,4 +1,4 @@
-import express, { Express } from 'express';
+﻿import express, { Express } from 'express';
 import { SyncController } from 'controllers/sync.controller';
 import { verifyTrainingApiKey } from 'middleware/training.midleware';
 import {
@@ -12,10 +12,16 @@ import { AttendanceSessionController } from 'controllers/attendance_session.cont
 import { FaceEnrollmentController } from 'controllers/face_enrollment.controller';
 import { handleFaceImageUpload } from 'middleware/upload.middleware';
 import { UserController } from 'controllers/user.controller';
+import { KioskController } from 'controllers/kiosk.controller';
+import { RoomController } from 'controllers/room.controller';
+import { DashboardController } from 'controllers/dashboard.controller';
 
 const router = express.Router();
 
 const apiRoutes = (app: Express) => {
+  // ==================== DASHBOARD ROUTES ====================
+  router.get('/dashboard', isLogin, isAdmin, DashboardController.getDashboard);
+
   // ==================== USER ROUTES ====================
   router.get('/users', isLogin, isAdmin, UserController.getAllUser);
   router.get(
@@ -70,6 +76,23 @@ const apiRoutes = (app: Express) => {
     FaceEnrollmentController.enrollFace,
   );
 
+  // ==================== KIOSK ROUTES ====================
+  router.post(
+    '/kiosks/generate-code',
+    isLogin,
+    isAdmin,
+    KioskController.createKioskCode,
+  );
+  router.post('/kiosks/activate', KioskController.activateKiosk);
+  router.get('/kiosks', isLogin, isAdmin, KioskController.getAllKiosk);
+  // ==================== ROOM ROUTES ====================
+  router.get(
+    '/rooms/available-for-kiosk',
+    isLogin,
+    isAdmin,
+    RoomController.getAvailableRoomsForKiosk,
+  );
+  router.get('/rooms', isLogin, RoomController.getAllRoom);
   app.use('/api', router);
 };
 export default apiRoutes;

@@ -1,6 +1,6 @@
 import { Image, Layout, Menu } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { DashboardOutlined, UserOutlined, BookOutlined } from '@ant-design/icons';
+import { DashboardOutlined, UserOutlined, BookOutlined, DesktopOutlined } from '@ant-design/icons';
 import YoeduLogo from '@/assets/images/yoedu-logo.svg';
 import { useTheme } from '@/app/providers/theme/hooks/useTheme';
 
@@ -21,6 +21,11 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed }) => {
       key: '/',
       icon: <DashboardOutlined />,
       label: 'Dashboard',
+    }, 
+    {
+      key: '/kiosks', 
+      icon: <DesktopOutlined />,
+      label: 'Thiết bị',
     },
     {
       key: '/students',
