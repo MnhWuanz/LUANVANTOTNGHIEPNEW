@@ -1,4 +1,4 @@
-﻿import { Layout, Dropdown, Badge, Switch } from 'antd';
+import { Layout, Dropdown, Badge, Switch } from 'antd';
 import {
   MenuUnfoldOutlined,
   MenuFoldOutlined,
@@ -20,9 +20,16 @@ const { Header } = Layout;
 interface AppHeaderProps {
   collapsed: boolean;
   setCollapsed: (value: boolean) => void;
+  compactTeacher?: boolean;
+  onOpenMobileMenu?: () => void;
 }
 
-const AppHeader: React.FC<AppHeaderProps> = ({ collapsed, setCollapsed }) => {
+const AppHeader: React.FC<AppHeaderProps> = ({
+  collapsed,
+  setCollapsed,
+  compactTeacher = false,
+  onOpenMobileMenu,
+}) => {
   const { theme, toggleTheme } = useTheme();
   const { user } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
@@ -53,18 +60,29 @@ const AppHeader: React.FC<AppHeaderProps> = ({ collapsed, setCollapsed }) => {
     },
   ];
 
+  const handleMenuClick = () => {
+    if (compactTeacher) {
+      onOpenMobileMenu?.();
+      return;
+    }
+
+    setCollapsed(!collapsed);
+  };
+
   return (
     <Header
-      className={`flex justify-between items-center px-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}
+      className={`flex h-14 md:h-16 justify-between items-center px-3 md:px-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}
     >
-      <div className="text-xl cursor-pointer" onClick={() => setCollapsed(!collapsed)}>
-        {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+      <div className="text-xl cursor-pointer" onClick={handleMenuClick}>
+        {compactTeacher || collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
       </div>
 
-      <div className="flex items-center gap-6">
-        <Badge count={5} size="small">
-          <BellOutlined className="text-lg cursor-pointer" />
-        </Badge>
+      <div className="flex items-center gap-3 md:gap-6">
+        {!compactTeacher && (
+          <Badge count={5} size="small">
+            <BellOutlined className="text-lg cursor-pointer" />
+          </Badge>
+        )}
 
         <Switch
           checked={theme === 'dark'}
@@ -75,10 +93,10 @@ const AppHeader: React.FC<AppHeaderProps> = ({ collapsed, setCollapsed }) => {
 
         <Dropdown menu={{ items: menuItems }} placement="bottomRight">
           <div className="flex items-center gap-2 cursor-pointer">
-            <UserAvatar size={46} />
+            <UserAvatar size={compactTeacher ? 40 : 46} />
 
-            <div className="flex flex-col leading-tight">
-              <span className="text-red-500 text-sm font-medium">{displayName}</span>
+            <div className="hidden sm:flex flex-col leading-tight">
+              <span className="text-red-500 text-sm font-medium max-w-40 truncate">{displayName}</span>
               <span className="text-xs text-gray-400">{user?.role}</span>
             </div>
           </div>

@@ -3,7 +3,7 @@ import { Modal } from 'antd';
 interface ModalCustomProps {
   open: boolean;
   title?: string;
-  width?: number;
+  width?: number | string;
 
   children: React.ReactNode;
 

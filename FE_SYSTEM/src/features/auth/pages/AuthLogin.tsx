@@ -1,6 +1,6 @@
 import CardCustom from '@/shared/components/card/CardCustom'
 import { Button, Form, Image } from 'antd'
-import YoeduLogo from '@/assets/images/yoedu-logo.svg';
+import Logo from '@/assets/images/logo.png';
 import { loginFormFields } from '@/features/auth/constants/login-form-fields';
 import InputCustom from '@/shared/components/input/InputCustom';
 import { FormFieldType } from '@/shared/types/form-field-type';
@@ -31,7 +31,7 @@ export default function AuthLogin() {
   return (
     <CardCustom className="mx-auto mt-20 w-full max-w-md p-8">
         <div className="mx-auto flex h-24 w-24 items-center justify-center">
-        <Image src={YoeduLogo} preview={false} />
+        <Image src={Logo} preview={false} />
       </div>
       <div className="mb-2 text-center">
         <h1 className="mb-2 font-bold text-2xl">Đăng nhập</h1>

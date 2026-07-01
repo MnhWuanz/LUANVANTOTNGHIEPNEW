@@ -1,4 +1,4 @@
-﻿import express, { Express } from 'express';
+import express, { Express } from 'express';
 import { SyncController } from 'controllers/sync.controller';
 import { verifyTrainingApiKey } from 'middleware/training.midleware';
 import {
@@ -15,12 +15,20 @@ import { UserController } from 'controllers/user.controller';
 import { KioskController } from 'controllers/kiosk.controller';
 import { RoomController } from 'controllers/room.controller';
 import { DashboardController } from 'controllers/dashboard.controller';
+import { CourseClassController } from 'controllers/course_class.controller';
+import { TeacherDashboardController } from 'controllers/teacher_dashboard.controller';
 
 const router = express.Router();
 
 const apiRoutes = (app: Express) => {
   // ==================== DASHBOARD ROUTES ====================
   router.get('/dashboard', isLogin, isAdmin, DashboardController.getDashboard);
+  router.get(
+    '/dashboard/teacher',
+    isLogin,
+    isTeacher,
+    TeacherDashboardController.getTeacherDashboard,
+  );
 
   // ==================== USER ROUTES ====================
   router.get('/users', isLogin, isAdmin, UserController.getAllUser);
@@ -91,6 +99,19 @@ const apiRoutes = (app: Express) => {
   );
   router.post('/kiosks/activate', KioskController.activateKiosk);
   router.get('/kiosks', isLogin, isAdmin, KioskController.getAllKiosk);
+  // ==================== COURSE CLASS ROUTES (TEACHER) ====================
+  router.get(
+    '/teachers/me/course-classes',
+    isLogin,
+    isTeacher,
+    CourseClassController.getMyCourseClasses,
+  );
+  router.get(
+    '/teachers/me/course-classes/:courseClassId/students',
+    isLogin,
+    isTeacher,
+    CourseClassController.getStudentsByCourseClass,
+  );
   // ==================== ROOM ROUTES ====================
   router.get(
     '/rooms/available-for-kiosk',

@@ -26,7 +26,7 @@ const ModalConfirm = ({
 }: ModalConfirmProps) => {
   return (
     <ModalCustom open={open} title={title} onCancel={onCancel} footer={null} width={400}>
-      <p className="mb-6 text-gray-500">{description}</p>
+      <p className="mb-6 text-gray-500 dark:text-gray-400">{description}</p>
 
       <div className="flex justify-end gap-2">
         <Button onClick={onCancel}>Hủy</Button>
