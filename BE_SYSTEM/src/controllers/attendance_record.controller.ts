@@ -8,7 +8,8 @@ const checkIn = async (req: Request, res: Response) => {
   if (!req.file) {
     return res.status(400).json({
       success: false,
-      message: 'Thieu file anh diem danh',
+      message:
+        'Thieu anh diem danh. Gui multipart/form-data voi field file, image, photo hoac faceImage',
     });
   }
 

@@ -5,7 +5,6 @@ import 'dotenv/config';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import swaggerUi from 'swagger-ui-express';
-import swaggerSpec from 'config/swagger';
 import apiRoutes from 'routes/api';
 
 import { createServer } from 'http';
@@ -18,11 +17,7 @@ import cron from 'node-cron';
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-const allowedOrigins = (
-  process.env.FRONTEND_URL ||
-  'http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174'
-)
-  .split(',')
+const allowedOrigins = process.env.FRONTEND_URL.split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
@@ -66,9 +61,6 @@ cron.schedule(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-
-// Swagger UI
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Create HTTP server
 const httpServer = createServer(app);

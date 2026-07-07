@@ -24,7 +24,31 @@ export const faceImageUpload = multer({
 });
 
 const faceImageSingleUpload = faceImageUpload.single('file');
-const attendanceFaceImageSingleUpload = faceImageUpload.single('file');
+const attendanceFaceImageUpload = faceImageUpload.fields([
+  { name: 'file', maxCount: 1 },
+  { name: 'image', maxCount: 1 },
+  { name: 'photo', maxCount: 1 },
+  { name: 'faceImage', maxCount: 1 },
+]);
+
+function getFirstUploadedFile(req: Parameters<RequestHandler>[0]) {
+  if (req.file) {
+    return req.file;
+  }
+
+  const files = req.files;
+  if (!files || Array.isArray(files)) {
+    return null;
+  }
+
+  return (
+    files.file?.[0] ??
+    files.image?.[0] ??
+    files.photo?.[0] ??
+    files.faceImage?.[0] ??
+    null
+  );
+}
 
 export const handleFaceImageUpload: RequestHandler = (req, res, next) => {
   faceImageSingleUpload(req, res, (error) => {
@@ -57,8 +81,13 @@ export const handleAttendanceFaceImageUpload: RequestHandler = (
   res,
   next,
 ) => {
-  attendanceFaceImageSingleUpload(req, res, (error) => {
+  attendanceFaceImageUpload(req, res, (error) => {
     if (!error) {
+      const uploadedFile = getFirstUploadedFile(req);
+      if (uploadedFile) {
+        req.file = uploadedFile;
+      }
+
       return next();
     }
 
@@ -66,6 +95,8 @@ export const handleAttendanceFaceImageUpload: RequestHandler = (
       const message =
         error.code === 'LIMIT_FILE_SIZE'
           ? 'Anh diem danh khong duoc vuot qua 5MB'
+          : error.code === 'LIMIT_UNEXPECTED_FILE'
+            ? 'Field anh diem danh phai la file, image, photo hoac faceImage'
           : error.message;
 
       return res.status(400).json({
