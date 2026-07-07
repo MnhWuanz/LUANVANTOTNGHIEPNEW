@@ -11,6 +11,7 @@ import { AwsRekognitionService } from 'services/aws_rekognition.service';
 import { updateAttendanceSessionStatuses } from 'services/attendance_session.service';
 
 const LATE_THRESHOLD_MINUTES = 30;
+const APP_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 
 export class AttendanceCheckInError extends Error {
   statusCode: number;
@@ -104,6 +105,49 @@ function buildShiftLabel(startShiftName: string, endShiftName: string) {
   return startShiftName === endShiftName
     ? startShiftName
     : `${startShiftName} - ${endShiftName}`;
+}
+
+function toDateOnlyUtc(date: Date) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: APP_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  const values = Object.fromEntries(
+    parts
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, Number(part.value)]),
+  );
+
+  return new Date(Date.UTC(values.year, values.month - 1, values.day));
+}
+
+function mapKiosk(kiosk: any) {
+  return {
+    idKiosk: kiosk.id_kiosk,
+    deviceCode: kiosk.device_code,
+    deviceName: kiosk.device_name,
+    roomCode: kiosk.room?.room_code ?? null,
+  };
+}
+
+function mapAttendanceSession(session: any) {
+  const schedule = session.course_schedule;
+
+  return {
+    idAttendanceSession: session.id_attendance_session,
+    status: session.status,
+    sessionDate: session.session_date.toISOString().split('T')[0],
+    checkinOpenAt: session.checkin_open_at.toISOString(),
+    checkinCloseAt: session.checkin_close_at.toISOString(),
+    courseCode: schedule.course_class.course_code,
+    subjectName: schedule.course_class.subject.name,
+    teacherName: schedule.course_class.teacher.full_name,
+    roomCode: schedule.room.room_code,
+    shift: buildShiftLabel(schedule.start_shift.name, schedule.end_shift.name),
+  };
 }
 
 function mapAttendanceRecord(record: any, duplicate: boolean) {
@@ -205,8 +249,8 @@ async function authenticateKiosk(params: {
   });
 }
 
-async function findOpenSessionForKiosk(idRoom: number, now: Date) {
-  const sessions = await prisma.attendance_Session.findMany({
+async function findOpenSessionsForKiosk(idRoom: number, now: Date) {
+  return prisma.attendance_Session.findMany({
     where: {
       status: AttendanceSessionStatus.OPEN,
       checkin_open_at: {
@@ -227,11 +271,51 @@ async function findOpenSessionForKiosk(idRoom: number, now: Date) {
       course_schedule: {
         include: {
           room: true,
-          course_class: true,
+          start_shift: true,
+          end_shift: true,
+          course_class: {
+            include: {
+              subject: true,
+              teacher: true,
+            },
+          },
         },
       },
     },
   });
+}
+
+async function findTodaySessionsForKiosk(idRoom: number, now: Date) {
+  return prisma.attendance_Session.findMany({
+    where: {
+      session_date: toDateOnlyUtc(now),
+      course_schedule: {
+        id_room: idRoom,
+      },
+    },
+    orderBy: {
+      checkin_open_at: 'asc',
+    },
+    include: {
+      course_schedule: {
+        include: {
+          room: true,
+          start_shift: true,
+          end_shift: true,
+          course_class: {
+            include: {
+              subject: true,
+              teacher: true,
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+async function findOpenSessionForKiosk(idRoom: number, now: Date) {
+  const sessions = await findOpenSessionsForKiosk(idRoom, now);
 
   if (sessions.length === 0) {
     throw new AttendanceCheckInError(
@@ -395,6 +479,82 @@ const checkInByFace = async (params: {
   }
 };
 
+const getCurrentKioskSession = async (params: {
+  deviceCode: string | string[] | undefined;
+  deviceToken: string | string[] | undefined;
+}) => {
+  const kiosk = await authenticateKiosk({
+    deviceCode: getHeaderValue(params.deviceCode),
+    deviceToken: getHeaderValue(params.deviceToken),
+  });
+
+  await updateAttendanceSessionStatuses();
+
+  const now = new Date();
+  const sessions = await findOpenSessionsForKiosk(kiosk.id_room, now);
+
+  if (sessions.length > 1) {
+    throw new AttendanceCheckInError(
+      409,
+      'Co nhieu phien diem danh dang mo trong cung phong',
+    );
+  }
+
+  if (sessions.length === 0) {
+    return {
+      hasSession: false,
+      kiosk: mapKiosk(kiosk),
+      session: null,
+    };
+  }
+
+  return {
+    hasSession: true,
+    kiosk: mapKiosk(kiosk),
+    session: mapAttendanceSession(sessions[0]),
+  };
+};
+
+const getTodayKioskSessions = async (params: {
+  deviceCode: string | string[] | undefined;
+  deviceToken: string | string[] | undefined;
+}) => {
+  const kiosk = await authenticateKiosk({
+    deviceCode: getHeaderValue(params.deviceCode),
+    deviceToken: getHeaderValue(params.deviceToken),
+  });
+
+  await updateAttendanceSessionStatuses();
+
+  const now = new Date();
+  const sessions = await findTodaySessionsForKiosk(kiosk.id_room, now);
+  const openSessions = sessions.filter(
+    (session) =>
+      session.status === AttendanceSessionStatus.OPEN &&
+      session.checkin_open_at <= now &&
+      session.checkin_close_at >= now,
+  );
+
+  if (openSessions.length > 1) {
+    throw new AttendanceCheckInError(
+      409,
+      'Co nhieu phien diem danh dang mo trong cung phong',
+    );
+  }
+
+  return {
+    hasSessionToday: sessions.length > 0,
+    hasOpenSession: openSessions.length === 1,
+    canCheckIn: openSessions.length === 1,
+    kiosk: mapKiosk(kiosk),
+    currentSession:
+      openSessions.length === 1 ? mapAttendanceSession(openSessions[0]) : null,
+    sessions: sessions.map(mapAttendanceSession),
+  };
+};
+
 export const AttendanceRecordService = {
   checkInByFace,
+  getCurrentKioskSession,
+  getTodayKioskSessions,
 };

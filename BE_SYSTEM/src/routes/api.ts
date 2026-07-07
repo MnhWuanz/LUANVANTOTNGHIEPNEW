@@ -69,6 +69,14 @@ const apiRoutes = (app: Express) => {
     AttendanceSessionController.generateSession,
   );
   router.get(
+    '/attendance-sessions/kiosk/current',
+    AttendanceRecordController.getCurrentKioskSession,
+  );
+  router.get(
+    '/attendance-sessions/kiosk/today',
+    AttendanceRecordController.getTodayKioskSessions,
+  );
+  router.get(
     '/attendance-sessions',
     isLogin,
     isAdmin,
