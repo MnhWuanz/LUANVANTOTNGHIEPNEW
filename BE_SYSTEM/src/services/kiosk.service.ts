@@ -1,12 +1,32 @@
 ﻿import { prisma } from 'config/client';
-import { randomInt } from 'crypto';
+import { randomBytes, randomInt } from 'crypto';
+import { hashPassword } from 'utils/password.util';
+
+const DEVICE_TOKEN_BYTES = 32;
+
+const kioskPublicSelect = {
+  id_kiosk: true,
+  device_code: true,
+  device_name: true,
+  status: true,
+  is_active: true,
+  activated_at: true,
+  last_seen_at: true,
+  created_at: true,
+  updated_at: true,
+  id_room: true,
+} as const;
 
 function generateActivationCode() {
-  return randomInt(100000, 1000000);
+  return String(randomInt(100000, 1000000));
 }
 
 function generateDeviceCode(idRoom: number) {
   return `KIOSK-${idRoom}-${randomInt(1000, 10000)}`;
+}
+
+function generateDeviceToken() {
+  return randomBytes(DEVICE_TOKEN_BYTES).toString('hex');
 }
 
 async function generateUniqueActivationCode() {
@@ -56,6 +76,7 @@ const createKioskCode = async (data: {
         status: 'PENDING',
         is_active: false,
       },
+      select: kioskPublicSelect,
     });
 
     const activationCode = await tx.activation_Code.create({
@@ -76,15 +97,16 @@ const createKioskCode = async (data: {
 
 const getAllKiosk = async () => {
   return prisma.kiosk.findMany({
-    include: {
+    select: {
+      ...kioskPublicSelect,
       room: true,
       activationCodes: true,
     },
   });
 };
 
-const activateKiosk = async (code: number) => {
-  if (!Number.isInteger(code) || code < 100000 || code > 999999) {
+const activateKiosk = async (code: string) => {
+  if (!/^\d{6}$/.test(code)) {
     throw new Error('INVALID_ACTIVATION_CODE');
   }
 
@@ -111,11 +133,16 @@ const activateKiosk = async (code: number) => {
     throw new Error('KIOSK_BLOCKED');
   }
 
-  if (activationCode.kiosk.status === 'ACTIVE' || activationCode.kiosk.is_active) {
+  if (
+    activationCode.kiosk.status === 'ACTIVE' ||
+    activationCode.kiosk.is_active
+  ) {
     throw new Error('KIOSK_ALREADY_ACTIVE');
   }
 
   const now = new Date();
+  const deviceToken = generateDeviceToken();
+  const deviceSecretHash = await hashPassword(deviceToken);
 
   return prisma.$transaction(async (tx) => {
     const consumedCode = await tx.activation_Code.updateMany({
@@ -137,12 +164,14 @@ const activateKiosk = async (code: number) => {
     const kiosk = await tx.kiosk.update({
       where: { id_kiosk: activationCode.id_kiosk },
       data: {
+        device_secret_hash: deviceSecretHash,
         status: 'ACTIVE',
         is_active: true,
         activated_at: now,
         last_seen_at: now,
       },
-      include: {
+      select: {
+        ...kioskPublicSelect,
         room: true,
       },
     });
@@ -150,6 +179,7 @@ const activateKiosk = async (code: number) => {
     return {
       kiosk,
       activated_at: now,
+      deviceToken,
     };
   });
 };

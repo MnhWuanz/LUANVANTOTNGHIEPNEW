@@ -24,6 +24,7 @@ export const faceImageUpload = multer({
 });
 
 const faceImageSingleUpload = faceImageUpload.single('file');
+const attendanceFaceImageSingleUpload = faceImageUpload.single('file');
 
 export const handleFaceImageUpload: RequestHandler = (req, res, next) => {
   faceImageSingleUpload(req, res, (error) => {
@@ -47,6 +48,36 @@ export const handleFaceImageUpload: RequestHandler = (req, res, next) => {
       success: false,
       message:
         error instanceof Error ? error.message : 'File ảnh đăng ký không hợp lệ',
+    });
+  });
+};
+
+export const handleAttendanceFaceImageUpload: RequestHandler = (
+  req,
+  res,
+  next,
+) => {
+  attendanceFaceImageSingleUpload(req, res, (error) => {
+    if (!error) {
+      return next();
+    }
+
+    if (error instanceof multer.MulterError) {
+      const message =
+        error.code === 'LIMIT_FILE_SIZE'
+          ? 'Anh diem danh khong duoc vuot qua 5MB'
+          : error.message;
+
+      return res.status(400).json({
+        success: false,
+        message,
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message:
+        error instanceof Error ? error.message : 'File anh diem danh khong hop le',
     });
   });
 };

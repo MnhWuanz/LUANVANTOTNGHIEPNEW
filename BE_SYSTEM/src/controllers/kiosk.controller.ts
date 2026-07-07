@@ -89,9 +89,9 @@ const getAllKiosk = async (req: Request, res: Response) => {
 
 const activateKiosk = async (req: Request, res: Response) => {
   try {
-    const code = Number(req.body.code);
+    const code = String(req.body.code ?? '').trim();
 
-    if (!req.body.code || Number.isNaN(code)) {
+    if (!code) {
       return res.status(400).json({
         success: false,
         message: 'code la bat buoc',

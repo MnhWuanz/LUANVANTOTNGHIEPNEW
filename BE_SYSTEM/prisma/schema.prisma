@@ -201,6 +201,7 @@ model Kiosk {
   id_kiosk          Int                 @id @default(autoincrement())
   device_code       String              @unique
   device_name       String
+  device_secret_hash String?
   status            KioskStatus         @default(PENDING)
   is_active         Boolean             @default(false)
   activated_at      DateTime?

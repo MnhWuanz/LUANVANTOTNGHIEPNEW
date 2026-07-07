@@ -10,13 +10,17 @@ import {
 import { isAdmin, isLogin, isTeacher } from 'middleware/auth';
 import { AttendanceSessionController } from 'controllers/attendance_session.controller';
 import { FaceEnrollmentController } from 'controllers/face_enrollment.controller';
-import { handleFaceImageUpload } from 'middleware/upload.middleware';
+import {
+  handleAttendanceFaceImageUpload,
+  handleFaceImageUpload,
+} from 'middleware/upload.middleware';
 import { UserController } from 'controllers/user.controller';
 import { KioskController } from 'controllers/kiosk.controller';
 import { RoomController } from 'controllers/room.controller';
 import { DashboardController } from 'controllers/dashboard.controller';
 import { CourseClassController } from 'controllers/course_class.controller';
 import { TeacherDashboardController } from 'controllers/teacher_dashboard.controller';
+import { AttendanceRecordController } from 'controllers/attendance_record.controller';
 
 const router = express.Router();
 
@@ -70,6 +74,11 @@ const apiRoutes = (app: Express) => {
     isAdmin,
     AttendanceSessionController.getAllSessions,
   );
+  router.post(
+    '/attendance-records/check-in',
+    handleAttendanceFaceImageUpload,
+    AttendanceRecordController.checkIn,
+  );
   // ==================== AUTH ROUTES ====================
   router.post('/auth/login', authLogin);
   router.post('/auth/logout', isLogin, authLogout);
@@ -99,6 +108,9 @@ const apiRoutes = (app: Express) => {
   );
   router.post('/kiosks/activate', KioskController.activateKiosk);
   router.get('/kiosks', isLogin, isAdmin, KioskController.getAllKiosk);
+  router.get('/kiosks/health', (req, res) => {
+    res.json({ status: 'ok', system: 'kiosk' });
+  });
   // ==================== COURSE CLASS ROUTES (TEACHER) ====================
   router.get(
     '/teachers/me/course-classes',
@@ -123,6 +135,3 @@ const apiRoutes = (app: Express) => {
   app.use('/api', router);
 };
 export default apiRoutes;
-
-
-
