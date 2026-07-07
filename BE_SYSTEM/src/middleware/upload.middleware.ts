@@ -4,6 +4,7 @@ import multer from 'multer';
 const MAX_FACE_IMAGE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_FACE_IMAGE_MIME_TYPES = new Set([
   'image/jpeg',
+  'image/jpg',
   'image/png',
   'image/webp',
 ]);
