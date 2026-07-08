@@ -461,14 +461,12 @@ const checkInByFace = async (params: {
       include: attendanceRecordInclude,
     });
 
-    void sendAttendanceSuccessEmail({
+    await sendAttendanceSuccessEmail({
       to: record.student.email,
       studentName: record.student.full_name,
       studentCode: record.student.student_code,
       checkinTime: record.checkin_time,
       status: record.status,
-    }).catch((error) => {
-      console.error('Queue attendance success email failed:', error);
     });
 
     return mapAttendanceRecord(record, false);

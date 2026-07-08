@@ -17,19 +17,22 @@ const transporter = nodemailer.createTransport({
   port: 587,
   secure: false,
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.APP_PASSWORD,
+    user: process.env.EMAIL_USER?.trim(),
+    pass: process.env.APP_PASSWORD?.trim(),
   },
 });
 
 function getMailFrom() {
-  if (!process.env.EMAIL_USER || !process.env.APP_PASSWORD) {
+  const emailUser = process.env.EMAIL_USER?.trim();
+  const appPassword = process.env.APP_PASSWORD?.trim();
+
+  if (!emailUser || !appPassword) {
     return null;
   }
 
   return {
     name: 'SYSTEM ATTENDANCE',
-    address: process.env.EMAIL_USER,
+    address: emailUser,
   };
 }
 
@@ -75,21 +78,22 @@ export async function sendAttendanceSuccessEmail(
     .join(' - ');
   const checkinTime = formatCheckinTime(params.checkinTime);
   const lines = [
-    'Điểm danh thành công.',
-    studentLabel ? `Sinh viên: ${studentLabel}` : null,
-    `Thời gian: ${checkinTime}`,
-    `Trạng thái: ${params.status}`,
+    'Diem danh thanh cong.',
+    studentLabel ? `Sinh vien: ${studentLabel}` : null,
+    `Thoi gian: ${checkinTime}`,
+    `Trang thai: ${params.status}`,
   ].filter(Boolean) as string[];
 
   try {
     await transporter.sendMail({
       from,
       to: params.to,
-      subject: 'Điểm danh thành công',
+      subject: 'Diem danh thanh cong',
       text: lines.join('\n'),
       html: lines.map((line) => `<p>${escapeHtml(line)}</p>`).join(''),
     });
 
+    console.log(`Attendance success email sent to ${params.to}`);
     return true;
   } catch (error) {
     console.error('Send attendance success email failed:', error);
