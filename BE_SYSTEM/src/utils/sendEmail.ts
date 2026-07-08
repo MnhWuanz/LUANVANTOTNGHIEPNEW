@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import SMTPTransport from 'nodemailer/lib/smtp-transport';
 import 'dotenv/config';
 
 type AttendanceSuccessEmailParams = {
@@ -11,16 +12,22 @@ type AttendanceSuccessEmailParams = {
 
 const APP_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
+const smtpOptions: SMTPTransport.Options & { family: 4 } = {
   host: 'smtp.gmail.com',
   port: 587,
   secure: false,
+  requireTLS: true,
+  family: 4,
   auth: {
     user: process.env.EMAIL_USER?.trim(),
     pass: process.env.APP_PASSWORD?.trim(),
   },
-});
+  tls: {
+    servername: 'smtp.gmail.com',
+  },
+};
+
+const transporter = nodemailer.createTransport(smtpOptions);
 
 function getMailFrom() {
   const emailUser = process.env.EMAIL_USER?.trim();
@@ -85,6 +92,8 @@ export async function sendAttendanceSuccessEmail(
   ].filter(Boolean) as string[];
 
   try {
+    console.log('Sending attendance success email via smtp.gmail.com:587');
+
     await transporter.sendMail({
       from,
       to: params.to,
