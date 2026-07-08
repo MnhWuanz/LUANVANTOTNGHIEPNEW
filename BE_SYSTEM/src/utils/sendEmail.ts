@@ -11,6 +11,12 @@ type AttendanceSuccessEmailParams = {
   status: string;
 };
 
+type EmailContent = {
+  subject: string;
+  text: string;
+  html: string;
+};
+
 const APP_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 const SMTP_HOST = 'smtp.gmail.com';
 const SMTP_PORT = 587;
@@ -29,6 +35,10 @@ function getMailFrom() {
     name: 'SYSTEM ATTENDANCE',
     address: emailUser,
   };
+}
+
+function getResendFrom() {
+  return process.env.RESEND_FROM_EMAIL?.trim() || null;
 }
 
 function formatCheckinTime(checkinTime?: Date | null) {
@@ -54,6 +64,73 @@ function escapeHtml(value: string) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function buildAttendanceEmailContent(
+  params: AttendanceSuccessEmailParams,
+): EmailContent {
+  const studentLabel = [params.studentName, params.studentCode]
+    .filter(Boolean)
+    .join(' - ');
+  const checkinTime = formatCheckinTime(params.checkinTime);
+  const lines = [
+    'Diem danh thanh cong.',
+    studentLabel ? `Sinh vien: ${studentLabel}` : null,
+    `Thoi gian: ${checkinTime}`,
+    `Trang thai: ${params.status}`,
+  ].filter(Boolean) as string[];
+
+  return {
+    subject: 'Diem danh thanh cong',
+    text: lines.join('\n'),
+    html: lines.map((line) => `<p>${escapeHtml(line)}</p>`).join(''),
+  };
+}
+
+async function sendViaResend(params: {
+  from: string;
+  to: string;
+  content: EmailContent;
+}) {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+
+  if (!apiKey) {
+    return false;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+
+  try {
+    console.log('Sending attendance success email via Resend API');
+
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: params.from,
+        to: [params.to],
+        subject: params.content.subject,
+        html: params.content.html,
+        text: params.content.text,
+      }),
+      signal: controller.signal,
+    });
+    const result = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      console.error('Send attendance success email via Resend failed:', result);
+      return false;
+    }
+
+    console.log('Attendance success email Resend result:', result);
+    return true;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function resolveSmtpIpv4Host() {
@@ -95,25 +172,35 @@ async function createAttendanceTransporter() {
 export async function sendAttendanceSuccessEmail(
   params: AttendanceSuccessEmailParams,
 ) {
+  const content = buildAttendanceEmailContent(params);
+  const resendFrom = getResendFrom();
+  const hasResendApiKey = Boolean(process.env.RESEND_API_KEY?.trim());
+  const hasResendFrom = Boolean(resendFrom);
+
+  if (hasResendApiKey && hasResendFrom) {
+    return sendViaResend({
+      from: resendFrom,
+      to: params.to,
+      content,
+    });
+  }
+
+  if (hasResendApiKey || hasResendFrom) {
+    console.error('Resend email config incomplete:', {
+      hasResendApiKey,
+      hasResendFrom,
+      requiredKeys: ['RESEND_API_KEY', 'RESEND_FROM_EMAIL'],
+    });
+  }
+
   const from = getMailFrom();
 
   if (!from) {
     console.error(
-      'Skip attendance success email: missing EMAIL_USER or APP_PASSWORD',
+      'Skip attendance success email: missing RESEND_API_KEY/RESEND_FROM_EMAIL or EMAIL_USER/APP_PASSWORD',
     );
     return false;
   }
-
-  const studentLabel = [params.studentName, params.studentCode]
-    .filter(Boolean)
-    .join(' - ');
-  const checkinTime = formatCheckinTime(params.checkinTime);
-  const lines = [
-    'Diem danh thanh cong.',
-    studentLabel ? `Sinh vien: ${studentLabel}` : null,
-    `Thoi gian: ${checkinTime}`,
-    `Trang thai: ${params.status}`,
-  ].filter(Boolean) as string[];
 
   try {
     const { smtpIpv4Host, transporter } = await createAttendanceTransporter();
@@ -125,9 +212,9 @@ export async function sendAttendanceSuccessEmail(
     const info = await transporter.sendMail({
       from,
       to: params.to,
-      subject: 'Diem danh thanh cong',
-      text: lines.join('\n'),
-      html: lines.map((line) => `<p>${escapeHtml(line)}</p>`).join(''),
+      subject: content.subject,
+      text: content.text,
+      html: content.html,
     });
 
     console.log('Attendance success email SMTP result:', {
