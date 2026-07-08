@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import dns from 'dns';
 import SMTPTransport from 'nodemailer/lib/smtp-transport';
 import 'dotenv/config';
 
@@ -11,23 +12,10 @@ type AttendanceSuccessEmailParams = {
 };
 
 const APP_TIME_ZONE = 'Asia/Ho_Chi_Minh';
+const SMTP_HOST = 'smtp.gmail.com';
+const SMTP_PORT = 587;
 
-const smtpOptions: SMTPTransport.Options & { family: 4 } = {
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  requireTLS: true,
-  family: 4,
-  auth: {
-    user: process.env.EMAIL_USER?.trim(),
-    pass: process.env.APP_PASSWORD?.trim(),
-  },
-  tls: {
-    servername: 'smtp.gmail.com',
-  },
-};
-
-const transporter = nodemailer.createTransport(smtpOptions);
+dns.setDefaultResultOrder('ipv4first');
 
 function getMailFrom() {
   const emailUser = process.env.EMAIL_USER?.trim();
@@ -68,6 +56,42 @@ function escapeHtml(value: string) {
     .replace(/'/g, '&#39;');
 }
 
+async function resolveSmtpIpv4Host() {
+  const addresses = await dns.promises.resolve4(SMTP_HOST);
+  const smtpIpv4Host = addresses[0];
+
+  if (!smtpIpv4Host) {
+    throw new Error(`No IPv4 address found for ${SMTP_HOST}`);
+  }
+
+  return smtpIpv4Host;
+}
+
+async function createAttendanceTransporter() {
+  const smtpIpv4Host = await resolveSmtpIpv4Host();
+  const smtpOptions: SMTPTransport.Options = {
+    host: smtpIpv4Host,
+    port: SMTP_PORT,
+    secure: false,
+    requireTLS: true,
+    connectionTimeout: 15000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
+    auth: {
+      user: process.env.EMAIL_USER?.trim(),
+      pass: process.env.APP_PASSWORD?.trim(),
+    },
+    tls: {
+      servername: SMTP_HOST,
+    },
+  };
+
+  return {
+    smtpIpv4Host,
+    transporter: nodemailer.createTransport(smtpOptions),
+  };
+}
+
 export async function sendAttendanceSuccessEmail(
   params: AttendanceSuccessEmailParams,
 ) {
@@ -92,9 +116,13 @@ export async function sendAttendanceSuccessEmail(
   ].filter(Boolean) as string[];
 
   try {
-    console.log('Sending attendance success email via smtp.gmail.com:587');
+    const { smtpIpv4Host, transporter } = await createAttendanceTransporter();
 
-    await transporter.sendMail({
+    console.log(
+      `Sending attendance success email via ${SMTP_HOST}:${SMTP_PORT} (${smtpIpv4Host})`,
+    );
+
+    const info = await transporter.sendMail({
       from,
       to: params.to,
       subject: 'Diem danh thanh cong',
@@ -102,7 +130,12 @@ export async function sendAttendanceSuccessEmail(
       html: lines.map((line) => `<p>${escapeHtml(line)}</p>`).join(''),
     });
 
-    console.log(`Attendance success email sent to ${params.to}`);
+    console.log('Attendance success email SMTP result:', {
+      accepted: info.accepted,
+      rejected: info.rejected,
+      messageId: info.messageId,
+      response: info.response,
+    });
     return true;
   } catch (error) {
     console.error('Send attendance success email failed:', error);
