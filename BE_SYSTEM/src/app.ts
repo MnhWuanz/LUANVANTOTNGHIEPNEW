@@ -4,7 +4,6 @@ import express from 'express';
 import 'dotenv/config';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import swaggerUi from 'swagger-ui-express';
 import apiRoutes from 'routes/api';
 
 import { createServer } from 'http';

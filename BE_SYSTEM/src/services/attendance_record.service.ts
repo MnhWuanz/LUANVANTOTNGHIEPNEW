@@ -9,6 +9,7 @@ import { prisma } from 'config/client';
 import { comparePassword } from 'src/utils/password.util';
 import { AwsRekognitionService } from 'services/aws_rekognition.service';
 import { updateAttendanceSessionStatuses } from 'services/attendance_session.service';
+import { sendAttendanceSuccessEmail } from 'utils/sendEmail';
 
 const LATE_THRESHOLD_MINUTES = 30;
 const APP_TIME_ZONE = 'Asia/Ho_Chi_Minh';
@@ -61,6 +62,7 @@ const attendanceRecordInclude = {
       id_student: true,
       student_code: true,
       full_name: true,
+      email: true,
       class: true,
     },
   },
@@ -457,6 +459,16 @@ const checkInByFace = async (params: {
         enrollmentId_enrollment: enrollment.id_enrollment,
       },
       include: attendanceRecordInclude,
+    });
+
+    void sendAttendanceSuccessEmail({
+      to: record.student.email,
+      studentName: record.student.full_name,
+      studentCode: record.student.student_code,
+      checkinTime: record.checkin_time,
+      status: record.status,
+    }).catch((error) => {
+      console.error('Queue attendance success email failed:', error);
     });
 
     return mapAttendanceRecord(record, false);
