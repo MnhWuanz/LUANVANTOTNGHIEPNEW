@@ -21,6 +21,8 @@ import { DashboardController } from 'controllers/dashboard.controller';
 import { CourseClassController } from 'controllers/course_class.controller';
 import { TeacherDashboardController } from 'controllers/teacher_dashboard.controller';
 import { AttendanceRecordController } from 'controllers/attendance_record.controller';
+import { StudentPortalController } from 'controllers/student_portal.controller';
+import { verifyStudentPortalApiKey } from 'middleware/student_portal.middleware';
 
 const router = express.Router();
 
@@ -98,6 +100,12 @@ const apiRoutes = (app: Express) => {
   router.get('/sync-check', verifyTrainingApiKey, (req, res) => {
     res.json({ message: 'System Sync is running!', success: true });
   });
+  // ==================== STUDENT PORTAL ROUTES ====================
+  router.get(
+    '/student-portal/students/:studentCode/attendance',
+    verifyStudentPortalApiKey,
+    StudentPortalController.getStudentAttendance,
+  );
   // ==================== FACE ENROLLMENT ROUTES ====================
   router.post(
     '/students/:studentId/face-enrollments',
