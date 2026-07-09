@@ -135,10 +135,22 @@ const apiRoutes = (app: Express) => {
     CourseClassController.getMyCourseClasses,
   );
   router.get(
+    '/teachers/me/course-classes/:courseClassId/schedules',
+    isLogin,
+    isTeacher,
+    CourseClassController.getCourseClassSchedules,
+  );
+  router.get(
     '/teachers/me/course-classes/:courseClassId/students',
     isLogin,
     isTeacher,
     CourseClassController.getStudentsByCourseClass,
+  );
+  router.get(
+    '/teachers/me/attendance-sessions/:attendanceSessionId/students',
+    isLogin,
+    isTeacher,
+    CourseClassController.getAttendanceSessionStudents,
   );
   // ==================== ROOM ROUTES ====================
   router.get(

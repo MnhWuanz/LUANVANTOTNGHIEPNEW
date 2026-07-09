@@ -198,20 +198,20 @@ model Face_Enrollment {
 }
 
 model Kiosk {
-  id_kiosk          Int                 @id @default(autoincrement())
-  device_code       String              @unique
-  device_name       String
+  id_kiosk           Int                 @id @default(autoincrement())
+  device_code        String              @unique
+  device_name        String
   device_secret_hash String?
-  status            KioskStatus         @default(PENDING)
-  is_active         Boolean             @default(false)
-  activated_at      DateTime?
-  last_seen_at      DateTime?
-  created_at        DateTime            @default(now())
-  updated_at        DateTime            @updatedAt
-  id_room           Int                 @unique
-  room              Room                @relation(fields: [id_room], references: [id_room])
-  attendanceRecords Attendance_Record[]
-  activationCodes   Activation_Code[]
+  status             KioskStatus         @default(PENDING)
+  is_active          Boolean             @default(false)
+  activated_at       DateTime?
+  last_seen_at       DateTime?
+  created_at         DateTime            @default(now())
+  updated_at         DateTime            @updatedAt
+  id_room            Int                 @unique
+  room               Room                @relation(fields: [id_room], references: [id_room])
+  attendanceRecords  Attendance_Record[]
+  activationCodes    Activation_Code[]
 
   @@map("kiosk_devices")
 }

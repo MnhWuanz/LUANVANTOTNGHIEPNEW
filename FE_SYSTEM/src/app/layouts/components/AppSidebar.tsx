@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Image, Layout, Menu } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
+  BookOutlined,
   CalendarOutlined,
   CameraOutlined,
   DashboardOutlined,
@@ -55,6 +56,11 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed, drawerMode = false, 
     ];
 
     const teacherItems = [
+      {
+        key: '/course-classes',
+        icon: <BookOutlined />,
+        label: 'Lớp học phần',
+      },
       {
         key: '/face-enrollment',
         icon: <CameraOutlined />,

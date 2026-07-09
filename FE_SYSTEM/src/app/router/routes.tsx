@@ -15,6 +15,7 @@ import DashboardRouter from '@/features/dashboard/pages/DashboardRouter';
 import AttendanceSessionPage from '@/features/attendance-sessions/pages/AttendanceSessionPage';
 import TeacherPage from '@/features/teachers/pages/TeacherPage';
 import FaceEnrollmentPage from '@/features/face-enrollment/pages/FaceEnrollmentPage';
+import TeacherCourseClassesPage from '@/features/course-classes/pages/TeacherCourseClassesPage';
 
 
 
@@ -94,6 +95,10 @@ export const router = createBrowserRouter([
           {
             element: <RoleRoute allowedRoles={['TEACHER']} />,
             children: [
+              {
+                path: 'course-classes',
+                element: <TeacherCourseClassesPage />,
+              },
               {
                 path: 'face-enrollment',
                 element: <FaceEnrollmentPage />,
