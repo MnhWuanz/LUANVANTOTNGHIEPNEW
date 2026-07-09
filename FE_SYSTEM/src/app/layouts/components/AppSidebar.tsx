@@ -48,11 +48,6 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed, drawerMode = false, 
         label: 'Điểm danh',
       },
       {
-        key: '/students',
-        icon: <UserOutlined />,
-        label: 'Học viên',
-      },
-      {
         key: '/teachers',
         icon: <UserOutlined />,
         label: 'Giáo viên',
