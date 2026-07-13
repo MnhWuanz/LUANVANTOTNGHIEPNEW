@@ -21,7 +21,6 @@ import {
   type Kiosk,
   type KioskStatus,
 } from '../types/kiosk-type';
-import ModalConfirm from '@/shared/components/modal/ModalConfirm';
 
 const statusColors: Record<KioskStatus, string> = {
   [KIOSK_STATUS.PENDING]: 'warning',
