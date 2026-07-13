@@ -124,6 +124,12 @@ const apiRoutes = (app: Express) => {
   );
   router.post('/kiosks/activate', KioskController.activateKiosk);
   router.get('/kiosks', isLogin, isAdmin, KioskController.getAllKiosk);
+  router.delete(
+    '/kiosks/:id_kiosk/delete',
+    isLogin,
+    isAdmin,
+    KioskController.deleteKisosk,
+  );
   router.get('/kiosks/health', (req, res) => {
     res.json({ status: 'ok', system: 'kiosk' });
   });

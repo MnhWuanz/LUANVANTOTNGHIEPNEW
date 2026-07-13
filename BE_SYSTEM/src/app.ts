@@ -16,9 +16,10 @@ import cron from 'node-cron';
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-const allowedOrigins = process.env.FRONTEND_URL.split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const allowedOrigins =
+  process.env.FRONTEND_URL?.split(',')
+    ?.map((origin) => origin.trim())
+    .filter(Boolean) ?? [];
 
 // Config CORS
 app.use(

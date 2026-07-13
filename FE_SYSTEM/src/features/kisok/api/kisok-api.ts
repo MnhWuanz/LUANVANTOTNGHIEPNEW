@@ -69,4 +69,10 @@ export const kioskRoleAdminApi = {
 
     return res.data;
   },
+
+  delete: async (id_kiosk: number) => {
+    const res = await axiosCilent.delete(`/kiosks/${id_kiosk}/delete`);
+
+    return res.data;
+  },
 };

@@ -9,7 +9,7 @@ import { useFormModal } from '@/shared/hooks/useFormModal';
 import { useNotification } from '@/shared/hooks/useNotification';
 import { FormModalMode } from '@/shared/types/form-modal-mode-type';
 import { Button, Descriptions, Space, Tag, Typography } from 'antd';
-import { CopyOutlined, EyeOutlined } from '@ant-design/icons';
+import { CopyOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { kioskRoleAdminApi } from '../api/kisok-api';
 import { kioskFormFields } from '../constant/kiosk-form-fields';
 import { kioskFilters } from '../constant/kisok-filter-table';
@@ -21,6 +21,7 @@ import {
   type Kiosk,
   type KioskStatus,
 } from '../types/kiosk-type';
+import ModalConfirm from '@/shared/components/modal/ModalConfirm';
 
 const statusColors: Record<KioskStatus, string> = {
   [KIOSK_STATUS.PENDING]: 'warning',
@@ -86,7 +87,7 @@ const KioskPage = () => {
       id_room: Number(values.id_room),
     } satisfies CreateKioskPayload);
   };
-
+ 
   const handleCopyActivationCode = async (record: Kiosk) => {
     if (!record.latestActivationCode) {
       showNotification('warning', 'Không có mã kích hoạt', 'Kiosk này chưa có mã kích hoạt');
@@ -162,6 +163,18 @@ const KioskPage = () => {
               icon: <CopyOutlined />,
               tooltip: 'Sao chép mã kích hoạt',
               onClick: handleCopyActivationCode,
+            },
+            {
+              show: () => true,
+              icon: <DeleteOutlined />,
+              isPopconfirm:true,
+              danger:true,
+              tooltip: 'Xóa thiết bị này',
+              onClick: async(record)=>{
+                await kioskRoleAdminApi.delete(record.id_kiosk);
+                showNotification("success","","Xóa thiết bị thành công");
+                refetch()
+              },
             },
           ]}
         />

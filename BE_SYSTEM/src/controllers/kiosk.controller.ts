@@ -109,8 +109,30 @@ const activateKiosk = async (req: Request, res: Response) => {
     return sendKioskError(error, res);
   }
 };
+const deleteKisosk = async (req: Request, res: Response) => {
+  try {
+    const id = String(req.params.id_kiosk);
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Không có id của thiết bị',
+      });
+    }
+
+    const result = await KioskService.deleteKiosk(Number(id));
+
+    return res.status(200).json({
+      success: true,
+      message: 'Xoa kiosk thanh cong',
+      data: result,
+    });
+  } catch (error) {
+    return sendKioskError(error, res);
+  }
+};
 export const KioskController = {
   createKioskCode,
   getAllKiosk,
   activateKiosk,
+  deleteKisosk,
 };

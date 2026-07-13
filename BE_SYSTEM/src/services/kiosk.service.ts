@@ -183,9 +183,23 @@ const activateKiosk = async (code: string) => {
     };
   });
 };
-
+const deleteKiosk = async (id_kiosk: number) => {
+  const kiosk = await prisma.kiosk.findUnique({
+    where: { id_kiosk },
+  });
+  if (!kiosk) {
+    throw new Error('KIOSK_NOT_FOUND');
+  }
+  return await prisma.kiosk.delete({
+    where: { id_kiosk },
+    include: {
+      activationCodes: true,
+    },
+  });
+};
 export const KioskService = {
   createKioskCode,
   getAllKiosk,
   activateKiosk,
+  deleteKiosk,
 };
