@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import Webcam from 'react-webcam';
 import { Button, Space, Typography, Alert } from 'antd';
+import {isMobile} from 'react-device-detect';
 import {
   CameraOutlined,
   ReloadOutlined,
@@ -18,7 +19,7 @@ interface WebcamCaptureProps {
 const videoConstraints = {
   width: { ideal: 720 },
   height: { ideal: 720 },
-  facingMode: 'user',
+  facingMode: isMobile ? {exact: "environment"} : 'user',
 };
 
 const WebcamCapture: React.FC<WebcamCaptureProps> = ({

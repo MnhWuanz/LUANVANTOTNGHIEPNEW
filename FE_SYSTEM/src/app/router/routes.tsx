@@ -16,6 +16,7 @@ import AttendanceSessionPage from '@/features/attendance-sessions/pages/Attendan
 import TeacherPage from '@/features/teachers/pages/TeacherPage';
 import FaceEnrollmentPage from '@/features/face-enrollment/pages/FaceEnrollmentPage';
 import TeacherCourseClassesPage from '@/features/course-classes/pages/TeacherCourseClassesPage';
+import SyncBatchPage from '@/features/sync/pages/SyncBatchPage';
 
 
 
@@ -79,6 +80,10 @@ export const router = createBrowserRouter([
               {
                 path: 'teachers',
                 element: <TeacherPage />,
+              },
+              {
+                path: 'sync-batches',
+                element: <SyncBatchPage />,
               },
               {
                 path: 'courses',

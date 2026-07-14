@@ -6,6 +6,7 @@ import {
   CalendarOutlined,
   CameraOutlined,
   DashboardOutlined,
+  DatabaseOutlined,
   DesktopOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -52,6 +53,11 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed, drawerMode = false, 
         key: '/teachers',
         icon: <UserOutlined />,
         label: 'Giáo viên',
+      },
+      {
+        key: '/sync-batches',
+        icon: <DatabaseOutlined />,
+        label: 'Đồng bộ',
       },
     ];
 
