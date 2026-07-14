@@ -4,7 +4,7 @@ import ThemeProvider from "@/app/providers/theme/ThemeProvider";
 import { store } from "@/app/redux/store";
 import { router } from "@/app/router/routes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools/production";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Provider } from "react-redux";
 import { RouterProvider } from "react-router-dom";
 
