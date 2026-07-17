@@ -470,6 +470,9 @@ const getAttendanceSessionStudents = async (
           confidence: true,
           checkin_time: true,
           created_at: true,
+          note: true,
+          is_manual_update: true,
+          updated_at: true,
           kiosk: {
             select: {
               id_kiosk: true,
@@ -538,6 +541,9 @@ const getAttendanceSessionStudents = async (
       checkinTime: record?.checkin_time?.toISOString() ?? null,
       confidence: record?.confidence ?? null,
       createdAt: record?.created_at.toISOString() ?? null,
+      note: record?.note ?? null,
+      isManualUpdate: record?.is_manual_update ?? false,
+      updatedAt: record?.updated_at?.toISOString() ?? null,
       kiosk: record?.kiosk
         ? {
             idKiosk: record.kiosk.id_kiosk,
@@ -600,9 +606,129 @@ const getAttendanceSessionStudents = async (
   };
 };
 
+const updateAttendanceRecord = async (params: {
+  attendanceSessionId: number;
+  studentId: number;
+  teacherUserId: number;
+  newStatus: AttendanceRecordStatus;
+  note?: string;
+}) => {
+  const teacherId = await getTeacherIdByUserId(params.teacherUserId);
+
+  if (!teacherId) {
+    return null;
+  }
+
+  // Verify session belongs to this teacher
+  const session = await prisma.attendance_Session.findFirst({
+    where: {
+      id_attendance_session: params.attendanceSessionId,
+      course_schedule: {
+        course_class: {
+          id_teacher: teacherId,
+        },
+      },
+    },
+    select: {
+      id_attendance_session: true,
+      status: true,
+      course_schedule: {
+        select: {
+          id_course_class: true,
+        },
+      },
+    },
+  });
+
+  if (!session) {
+    return null;
+  }
+
+  // Verify student is enrolled in the course class
+  const enrollment = await prisma.enrollment.findFirst({
+    where: {
+      id_student: params.studentId,
+      id_course_class: session.course_schedule.id_course_class,
+    },
+    select: { id_enrollment: true },
+  });
+
+  if (!enrollment) {
+    return { error: 'NOT_ENROLLED' };
+  }
+
+  const now = new Date();
+
+  // Upsert attendance record
+  const existingRecord = await prisma.attendance_Record.findUnique({
+    where: {
+      id_attendance_session_id_student: {
+        id_attendance_session: params.attendanceSessionId,
+        id_student: params.studentId,
+      },
+    },
+    select: { id_attendance_record: true },
+  });
+
+  let record;
+
+  if (existingRecord) {
+    record = await prisma.attendance_Record.update({
+      where: { id_attendance_record: existingRecord.id_attendance_record },
+      data: {
+        status: params.newStatus,
+        note: params.note ?? null,
+        is_manual_update: true,
+        updated_at: now,
+      },
+      select: {
+        id_attendance_record: true,
+        status: true,
+        note: true,
+        is_manual_update: true,
+        checkin_time: true,
+        updated_at: true,
+        created_at: true,
+      },
+    });
+  } else {
+    record = await prisma.attendance_Record.create({
+      data: {
+        id_attendance_session: params.attendanceSessionId,
+        id_student: params.studentId,
+        enrollmentId_enrollment: enrollment.id_enrollment,
+        status: params.newStatus,
+        note: params.note ?? null,
+        is_manual_update: true,
+        updated_at: now,
+      },
+      select: {
+        id_attendance_record: true,
+        status: true,
+        note: true,
+        is_manual_update: true,
+        checkin_time: true,
+        updated_at: true,
+        created_at: true,
+      },
+    });
+  }
+
+  return {
+    idAttendanceRecord: record.id_attendance_record,
+    status: record.status,
+    note: record.note,
+    isManualUpdate: record.is_manual_update,
+    checkinTime: record.checkin_time?.toISOString() ?? null,
+    updatedAt: record.updated_at?.toISOString() ?? null,
+    createdAt: record.created_at.toISOString(),
+  };
+};
+
 export const CourseClassService = {
   getCourseClassesByTeacherUserId,
   getCourseClassSchedules,
   getStudentsByCourseClassId,
   getAttendanceSessionStudents,
+  updateAttendanceRecord,
 };

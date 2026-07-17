@@ -48,6 +48,5 @@ export const verifyStudentPortalApiKey = (
       message: 'Invalid x-api-key',
     });
   }
-
   next();
 };

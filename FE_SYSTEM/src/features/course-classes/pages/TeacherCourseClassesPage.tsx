@@ -1,6 +1,7 @@
 import PageHeader from '@/shared/components/page/PageHeader';
 import ModalCustom from '@/shared/components/modal/ModalCustom';
-import { useQuery } from '@tanstack/react-query';
+import { useNotification } from '@/shared/hooks/useNotification';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Button,
@@ -8,7 +9,10 @@ import {
   Col,
   Descriptions,
   Empty,
+  Form,
+  Input,
   Progress,
+  Radio,
   Row,
   Segmented,
   Select,
@@ -17,6 +21,7 @@ import {
   Statistic,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
@@ -24,19 +29,22 @@ import {
   BookOutlined,
   CalendarOutlined,
   ClockCircleOutlined,
+  EditOutlined,
   EyeOutlined,
   ReloadOutlined,
+  SaveOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
 import { useMemo, useState } from 'react';
 import { teacherCourseClassApi } from '../api/teacher-course-class-api';
 import type {
+  AttendanceRecordStatus,
+  AttendanceSessionStatus,
   EffectiveAttendanceStatus,
   TeacherAttendanceSession,
   TeacherAttendanceStudent,
   TeacherCourseClassItem,
   TeacherCourseSchedule,
-  AttendanceSessionStatus,
 } from '../types/teacher-course-class-type';
 
 const { Text } = Typography;
@@ -148,6 +156,11 @@ const TeacherCourseClassesPage = () => {
     useState<number>();
   const [detailStatusFilter, setDetailStatusFilter] =
     useState<DetailStatusFilter>('ALL');
+  const [editingStudent, setEditingStudent] = useState<TeacherAttendanceStudent | null>(null);
+
+  const { showNotification } = useNotification();
+  const queryClient = useQueryClient();
+  const [editForm] = Form.useForm<{ status: AttendanceRecordStatus; note: string }>();
 
   const {
     data: courseClasses = [],
@@ -245,6 +258,56 @@ const TeacherCourseClassesPage = () => {
       (student) => student.effectiveAttendanceStatus === detailStatusFilter,
     );
   }, [detailData?.students, detailStatusFilter]);
+
+  const updateMutation = useMutation({
+    mutationFn: (params: { studentId: number; status: AttendanceRecordStatus; note?: string }) =>
+      teacherCourseClassApi.updateAttendanceRecord(
+        selectedAttendanceSessionId!,
+        params.studentId,
+        { status: params.status, note: params.note },
+      ),
+    onSuccess: (res) => {
+      showNotification('success', 'Cập nhật điểm danh thành công', res.message);
+      setEditingStudent(null);
+      editForm.resetFields();
+      queryClient.invalidateQueries({
+        queryKey: ['teacher-attendance-session-students', selectedAttendanceSessionId],
+      });
+      if (selectedCourseClassId !== undefined) {
+        queryClient.invalidateQueries({
+          queryKey: ['teacher-course-class-schedules', selectedCourseClassId],
+        });
+      }
+    },
+    onError: (error: unknown) => {
+      const message =
+        typeof error === 'object' && error !== null && 'response' in error
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined;
+      showNotification('error', 'Cập nhật điểm danh thất bại', message || 'Đã có lỗi xảy ra');
+    },
+  });
+
+  const handleOpenEdit = (student: TeacherAttendanceStudent) => {
+    setEditingStudent(student);
+    const currentStatus: AttendanceRecordStatus =
+      (student.recordStatus as AttendanceRecordStatus) ||
+      (student.effectiveAttendanceStatus === 'PENDING' ? 'ABSENT' : student.effectiveAttendanceStatus as AttendanceRecordStatus);
+    editForm.setFieldsValue({
+      status: currentStatus,
+      note: student.note || '',
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    const values = await editForm.validateFields();
+    if (!editingStudent) return;
+    updateMutation.mutate({
+      studentId: editingStudent.idStudent,
+      status: values.status,
+      note: values.note?.trim() || undefined,
+    });
+  };
 
   const handleRefresh = () => {
     refetchCourseClasses();
@@ -373,7 +436,7 @@ const TeacherCourseClassesPage = () => {
     {
       title: 'MSSV',
       dataIndex: 'studentCode',
-      width: 120,
+      width: 115,
       render: (value: string) => <Text code>{value}</Text>,
     },
     {
@@ -384,35 +447,57 @@ const TeacherCourseClassesPage = () => {
     {
       title: 'Lớp',
       dataIndex: 'class',
-      width: 120,
+      width: 110,
     },
     {
       title: 'Trạng thái',
       dataIndex: 'effectiveAttendanceStatus',
-      width: 150,
+      width: 140,
       align: 'center',
-      render: (status: EffectiveAttendanceStatus) => (
-        <AttendanceStatusTag status={status} />
+      render: (status: EffectiveAttendanceStatus, record: TeacherAttendanceStudent) => (
+        <Space direction="vertical" size={2} style={{ alignItems: 'center' }}>
+          <AttendanceStatusTag status={status} />
+          {record.isManualUpdate && (
+            <Tooltip title={record.note ? `Ghi chú: ${record.note}` : 'Chỉnh sửa thủ công'}>
+              <Tag color="purple" style={{ fontSize: 10, cursor: 'pointer' }}>Thủ công</Tag>
+            </Tooltip>
+          )}
+        </Space>
       ),
     },
     {
       title: 'Ngày giờ điểm danh',
       dataIndex: 'checkinTime',
-      width: 170,
+      width: 160,
       render: (value: string | null) => formatDateTime(value),
     },
     {
       title: 'Độ tin cậy',
       dataIndex: 'confidence',
-      width: 120,
+      width: 110,
       align: 'center',
       render: (value: number | null) =>
         value === null || value === undefined ? '-' : `${value.toFixed(1)}%`,
     },
     {
       title: 'Kiosk',
-      width: 160,
+      width: 150,
+      ellipsis: true,
       render: (_, record) => record.kiosk?.deviceName ?? '-',
+    },
+    {
+      title: 'Chỉnh sửa',
+      width: 90,
+      align: 'center',
+      render: (_, record) => (
+        <Tooltip title="Chỉnh sửa điểm danh">
+          <Button
+            type="link"
+            icon={<EditOutlined />}
+            onClick={() => handleOpenEdit(record)}
+          />
+        </Tooltip>
+      ),
     },
   ];
 
@@ -666,11 +751,105 @@ const TeacherCourseClassesPage = () => {
               columns={detailColumns}
               dataSource={filteredDetailStudents}
               pagination={{ pageSize: 10, showSizeChanger: true }}
-              scroll={{ x: 980, y: 360 }}
+              scroll={{ x: 1060, y: 360 }}
               size="middle"
             />
           </div>
         ) : null}
+      </ModalCustom>
+
+      {/* Modal chỉnh sửa điểm danh thủ công */}
+      <ModalCustom
+        open={!!editingStudent}
+        title="✏️ Chỉnh sửa điểm danh thủ công"
+        width={520}
+        onCancel={() => {
+          setEditingStudent(null);
+          editForm.resetFields();
+        }}
+        footer={null}
+      >
+        {editingStudent && (
+          <div className="flex flex-col gap-4">
+            <Alert
+              type="info"
+              showIcon
+              message={
+                <span>
+                  <strong>{editingStudent.fullName}</strong>{' '}
+                  <Text code>{editingStudent.studentCode}</Text>{' '}
+                  — {editingStudent.class}
+                </span>
+              }
+              description="Trạng thái hiện tại sẽ được thay thế bằng lựa chọn bên dưới. Hành động này được ghi lại."
+            />
+
+            <Form
+              form={editForm}
+              layout="vertical"
+              onFinish={handleSaveEdit}
+            >
+              <Form.Item
+                name="status"
+                label="Trạng thái điểm danh"
+                rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
+              >
+                <Radio.Group buttonStyle="solid" style={{ width: '100%' }}>
+                  <Radio.Button
+                    value="PRESENT"
+                    style={{ width: '33.33%', textAlign: 'center', color: '#52c41a', borderColor: undefined }}
+                  >
+                    ✓ Có mặt
+                  </Radio.Button>
+                  <Radio.Button
+                    value="LATE"
+                    style={{ width: '33.33%', textAlign: 'center' }}
+                  >
+                    ⏰ Đến trễ
+                  </Radio.Button>
+                  <Radio.Button
+                    value="ABSENT"
+                    style={{ width: '33.34%', textAlign: 'center' }}
+                  >
+                    ✗ Vắng mặt
+                  </Radio.Button>
+                </Radio.Group>
+              </Form.Item>
+
+              <Form.Item
+                name="note"
+                label="Ghi chú lý do chỉnh sửa"
+              >
+                <Input.TextArea
+                  rows={3}
+                  placeholder="Nhập lý do chỉnh sửa (không bắt buộc, ví dụ: sinh viên có mặt nhưng kiosk lỗi)"
+                  maxLength={500}
+                  showCount
+                />
+              </Form.Item>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  onClick={() => {
+                    setEditingStudent(null);
+                    editForm.resetFields();
+                  }}
+                  disabled={updateMutation.isPending}
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  loading={updateMutation.isPending}
+                  onClick={handleSaveEdit}
+                >
+                  Lưu thay đổi
+                </Button>
+              </div>
+            </Form>
+          </div>
+        )}
       </ModalCustom>
     </div>
   );

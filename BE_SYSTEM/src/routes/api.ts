@@ -158,6 +158,12 @@ const apiRoutes = (app: Express) => {
     isTeacher,
     CourseClassController.getAttendanceSessionStudents,
   );
+  router.patch(
+    '/teachers/me/attendance-sessions/:attendanceSessionId/students/:studentId/record',
+    isLogin,
+    isTeacher,
+    CourseClassController.updateAttendanceRecord,
+  );
   // ==================== ROOM ROUTES ====================
   router.get(
     '/rooms/available-for-kiosk',

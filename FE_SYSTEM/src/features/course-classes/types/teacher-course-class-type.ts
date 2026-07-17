@@ -121,6 +121,9 @@ export interface TeacherAttendanceStudent {
   checkinTime: string | null;
   confidence: number | null;
   createdAt: string | null;
+  note: string | null;
+  isManualUpdate: boolean;
+  updatedAt: string | null;
   kiosk: {
     idKiosk: number;
     deviceCode: string;
@@ -136,3 +139,23 @@ export interface TeacherAttendanceSessionStudentsData {
   summary: TeacherAttendanceSessionSummary;
   students: TeacherAttendanceStudent[];
 }
+
+export interface UpdateAttendanceRecordPayload {
+  status: AttendanceRecordStatus;
+  note?: string;
+}
+
+export interface UpdateAttendanceRecordResponse {
+  success: boolean;
+  message: string;
+  data: {
+    idAttendanceRecord: number;
+    status: AttendanceRecordStatus;
+    note: string | null;
+    isManualUpdate: boolean;
+    checkinTime: string | null;
+    updatedAt: string | null;
+    createdAt: string;
+  };
+}
+

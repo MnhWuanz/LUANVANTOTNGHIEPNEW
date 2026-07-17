@@ -258,6 +258,9 @@ model Attendance_Record {
   confidence              Float?
   status                  AttendanceRecordStatus
   checkin_time            DateTime?
+  note                    String?                @db.Text
+  is_manual_update        Boolean                @default(false)
+  updated_at              DateTime?
   created_at              DateTime               @default(now())
   enrollment              Enrollment?            @relation(fields: [enrollmentId_enrollment], references: [id_enrollment])
   enrollmentId_enrollment Int?

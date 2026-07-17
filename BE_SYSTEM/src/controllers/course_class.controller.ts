@@ -184,9 +184,84 @@ const getAttendanceSessionStudents = async (req: Request, res: Response) => {
   }
 };
 
+const updateAttendanceRecord = async (req: Request, res: Response) => {
+  const attendanceSessionId = parsePositiveInteger(req.params.attendanceSessionId);
+  const studentId = parsePositiveInteger(req.params.studentId);
+
+  if (!attendanceSessionId) {
+    return res.status(400).json({
+      success: false,
+      message: 'attendanceSessionId không hợp lệ',
+    });
+  }
+
+  if (!studentId) {
+    return res.status(400).json({
+      success: false,
+      message: 'studentId không hợp lệ',
+    });
+  }
+
+  if (!req.user?.id_user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Chưa đăng nhập',
+    });
+  }
+
+  const { status, note } = req.body;
+  const validStatuses = ['PRESENT', 'ABSENT', 'LATE'];
+
+  if (!status || !validStatuses.includes(status)) {
+    return res.status(400).json({
+      success: false,
+      message: `Trạng thái không hợp lệ. Phải là một trong: ${validStatuses.join(', ')}`,
+    });
+  }
+
+  try {
+    const result = await CourseClassService.updateAttendanceRecord({
+      attendanceSessionId,
+      studentId,
+      teacherUserId: req.user.id_user,
+      newStatus: status,
+      note: typeof note === 'string' ? note.trim() || undefined : undefined,
+    });
+
+    if (result === null) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền chỉnh sửa phiên điểm danh này',
+      });
+    }
+
+    if ('error' in result && result.error === 'NOT_ENROLLED') {
+      return res.status(409).json({
+        success: false,
+        message: 'Sinh viên không thuộc lớp học phần này',
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Cập nhật điểm danh thành công',
+      data: result,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Cập nhật điểm danh thất bại';
+
+    return res.status(500).json({
+      success: false,
+      message,
+    });
+  }
+};
+
 export const CourseClassController = {
   getMyCourseClasses,
   getCourseClassSchedules,
   getStudentsByCourseClass,
   getAttendanceSessionStudents,
+  updateAttendanceRecord,
 };

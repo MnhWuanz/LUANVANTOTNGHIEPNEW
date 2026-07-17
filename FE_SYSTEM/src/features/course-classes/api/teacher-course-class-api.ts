@@ -3,6 +3,8 @@ import type {
   TeacherAttendanceSessionStudentsData,
   TeacherCourseClassItem,
   TeacherCourseClassSchedulesData,
+  UpdateAttendanceRecordPayload,
+  UpdateAttendanceRecordResponse,
 } from '../types/teacher-course-class-type';
 
 export const teacherCourseClassApi = {
@@ -33,4 +35,18 @@ export const teacherCourseClassApi = {
 
     return res.data.data;
   },
+
+  updateAttendanceRecord: async (
+    attendanceSessionId: number,
+    studentId: number,
+    payload: UpdateAttendanceRecordPayload,
+  ): Promise<UpdateAttendanceRecordResponse> => {
+    const res = await axiosCilent.patch<UpdateAttendanceRecordResponse>(
+      `/teachers/me/attendance-sessions/${attendanceSessionId}/students/${studentId}/record`,
+      payload,
+    );
+
+    return res.data;
+  },
 };
+
