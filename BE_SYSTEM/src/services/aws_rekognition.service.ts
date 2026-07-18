@@ -47,7 +47,6 @@ const ensureCollection = async () => {
 
     throw error;
   }
-
   return {
     collectionId,
     created: true,
@@ -109,7 +108,6 @@ const deleteFaces = async (faceIds: string[], collectionId = getCollectionId()) 
   if (faceIds.length === 0) {
     return;
   }
-
   await rekognition.send(
     new DeleteFacesCommand({
       CollectionId: collectionId,

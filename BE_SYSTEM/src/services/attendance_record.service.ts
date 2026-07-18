@@ -99,7 +99,6 @@ function getHeaderValue(value: string | string[] | undefined) {
   if (Array.isArray(value)) {
     return value[0] ?? null;
   }
-
   return value ?? null;
 }
 
@@ -137,7 +136,6 @@ function mapKiosk(kiosk: any) {
 
 function mapAttendanceSession(session: any) {
   const schedule = session.course_schedule;
-
   return {
     idAttendanceSession: session.id_attendance_session,
     status: session.status,
@@ -155,7 +153,6 @@ function mapAttendanceSession(session: any) {
 function mapAttendanceRecord(record: any, duplicate: boolean) {
   const session = record.attendance_session;
   const schedule = session.course_schedule;
-
   return {
     duplicate,
     record: {
@@ -180,7 +177,10 @@ function mapAttendanceRecord(record: any, duplicate: boolean) {
       subjectName: schedule.course_class.subject.name,
       teacherName: schedule.course_class.teacher.full_name,
       roomCode: schedule.room.room_code,
-      shift: buildShiftLabel(schedule.start_shift.name, schedule.end_shift.name),
+      shift: buildShiftLabel(
+        schedule.start_shift.name,
+        schedule.end_shift.name,
+      ),
     },
     kiosk: {
       idKiosk: record.kiosk?.id_kiosk ?? null,
@@ -205,7 +205,7 @@ async function authenticateKiosk(params: {
   if (!params.deviceCode || !params.deviceToken) {
     throw new AttendanceCheckInError(
       401,
-      'Thieu x-kiosk-device-code hoac x-kiosk-token',
+      'Thiếu x-kiosk-device-code hoặc x-kiosk-token',
     );
   }
   const kiosk = await prisma.kiosk.findUnique({
@@ -216,19 +216,19 @@ async function authenticateKiosk(params: {
   });
 
   if (!kiosk) {
-    throw new AttendanceCheckInError(404, 'Kiosk khong ton tai');
+    throw new AttendanceCheckInError(404, 'Kiosk không tồn tại');
   }
 
   if (kiosk.status === KioskStatus.BLOCKED) {
-    throw new AttendanceCheckInError(403, 'Kiosk da bi khoa');
+    throw new AttendanceCheckInError(403, 'Kiosk đã bị khoá');
   }
 
   if (kiosk.status !== KioskStatus.ACTIVE || !kiosk.is_active) {
-    throw new AttendanceCheckInError(403, 'Kiosk chua duoc kich hoat');
+    throw new AttendanceCheckInError(403, 'Kiosk chưa được kích hoạt');
   }
 
   if (!kiosk.device_secret_hash) {
-    throw new AttendanceCheckInError(401, 'Kiosk chua co token xac thuc');
+    throw new AttendanceCheckInError(401, 'Kiosk chưa có token xác thực');
   }
 
   const validToken = await comparePassword(
@@ -237,7 +237,7 @@ async function authenticateKiosk(params: {
   );
 
   if (!validToken) {
-    throw new AttendanceCheckInError(401, 'Token kiosk khong hop le');
+    throw new AttendanceCheckInError(401, 'Token kiosk không hợp lệ');
   }
 
   return prisma.kiosk.update({
@@ -251,6 +251,7 @@ async function authenticateKiosk(params: {
   });
 }
 
+// Tìm buổi điểm danh đang mở
 async function findOpenSessionsForKiosk(idRoom: number, now: Date) {
   return prisma.attendance_Session.findMany({
     where: {
@@ -286,7 +287,7 @@ async function findOpenSessionsForKiosk(idRoom: number, now: Date) {
     },
   });
 }
-
+// Tìm các buổi điểm danh hôm nay
 async function findTodaySessionsForKiosk(idRoom: number, now: Date) {
   return prisma.attendance_Session.findMany({
     where: {
@@ -322,17 +323,16 @@ async function findOpenSessionForKiosk(idRoom: number, now: Date) {
   if (sessions.length === 0) {
     throw new AttendanceCheckInError(
       404,
-      'Khong co phien diem danh dang mo cho phong cua kiosk',
+      'Không có phiên điểm danh đang mở trong phòng của kiosk',
     );
   }
 
   if (sessions.length > 1) {
     throw new AttendanceCheckInError(
       409,
-      'Co nhieu phien diem danh dang mo trong cung phong',
+      'Có nhiều phiên điểm danh đang mở trong cùng phòng',
     );
   }
-
   return sessions[0];
 }
 
@@ -340,7 +340,7 @@ async function findActiveFaceEnrollment(imageBuffer: Buffer) {
   const faceMatch = await AwsRekognitionService.searchStudentFace(imageBuffer);
 
   if (!faceMatch) {
-    throw new AttendanceCheckInError(404, 'Khong nhan dien duoc khuon mat');
+    throw new AttendanceCheckInError(404, 'Không nhận diện được khuôn mặt');
   }
 
   const faceEnrollment = await prisma.face_Enrollment.findFirst({
@@ -363,10 +363,9 @@ async function findActiveFaceEnrollment(imageBuffer: Buffer) {
   if (!faceEnrollment) {
     throw new AttendanceCheckInError(
       404,
-      'Khuon mat khong co dang ky ACTIVE trong he thong',
+      'Khuôn mặt không có đăng ký hoặc không có trong buổi điểm danh này',
     );
   }
-
   return {
     faceMatch,
     faceEnrollment,
@@ -377,7 +376,6 @@ function getAttendanceStatus(checkinTime: Date, checkinOpenAt: Date) {
   const lateAfter = new Date(
     checkinOpenAt.getTime() + LATE_THRESHOLD_MINUTES * 60 * 1000,
   );
-
   return checkinTime.getTime() > lateAfter.getTime()
     ? AttendanceRecordStatus.LATE
     : AttendanceRecordStatus.PRESENT;
@@ -415,7 +413,6 @@ const checkInByFace = async (params: {
   const { faceMatch, faceEnrollment } = await findActiveFaceEnrollment(
     params.imageBuffer,
   );
-
   const enrollment = await prisma.enrollment.findUnique({
     where: {
       id_student_id_course_class: {
@@ -431,7 +428,7 @@ const checkInByFace = async (params: {
   if (!enrollment) {
     throw new AttendanceCheckInError(
       409,
-      'Sinh vien khong thuoc lop cua phien diem danh',
+      'Sinh viên không thuộc lớp của phiên điểm danh',
     );
   }
 
@@ -506,7 +503,7 @@ const getCurrentKioskSession = async (params: {
   if (sessions.length > 1) {
     throw new AttendanceCheckInError(
       409,
-      'Co nhieu phien diem danh dang mo trong cung phong',
+      'Có nhiều phiên điểm danh đang mở trong cùng phòng',
     );
   }
 
