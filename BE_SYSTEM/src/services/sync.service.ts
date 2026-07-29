@@ -59,12 +59,13 @@ export const SyncService = async (payload: TrainingSyncCourseClassesInput) => {
      * 1. Subjects
      */
     for (const item of payload.subjects) {
+      const cleanSubjectCode = item.subjectCode.trim();
       let existing = await tx.subject.findUnique({
         where: { source_id_subject: item.sourceSubjectId },
       });
       if (!existing) {
         existing = await tx.subject.findUnique({
-          where: { subject_code: item.subjectCode },
+          where: { subject_code: cleanSubjectCode },
         });
       }
 
@@ -73,8 +74,8 @@ export const SyncService = async (payload: TrainingSyncCourseClassesInput) => {
           where: { id_subject: existing.id_subject },
           data: {
             source_id_subject: item.sourceSubjectId,
-            subject_code: item.subjectCode,
-            name: item.name,
+            subject_code: cleanSubjectCode,
+            name: item.name.trim(),
           },
         });
         summary.subjects.updated!++;
@@ -82,8 +83,8 @@ export const SyncService = async (payload: TrainingSyncCourseClassesInput) => {
         await tx.subject.create({
           data: {
             source_id_subject: item.sourceSubjectId,
-            subject_code: item.subjectCode,
-            name: item.name,
+            subject_code: cleanSubjectCode,
+            name: item.name.trim(),
           },
         });
         summary.subjects.created++;
@@ -281,12 +282,20 @@ export const SyncService = async (payload: TrainingSyncCourseClassesInput) => {
         continue;
       }
 
+      const cleanSubjectCode = subject.subject_code.trim();
+      const cleanCourseCode = item.courseCode.trim();
+
+      // Ghép mã môn + nhóm học phần để đảm bảo tính duy nhất toàn hệ thống (vd: CS03017_01)
+      const formattedCourseCode = cleanCourseCode.startsWith(`${cleanSubjectCode}_`)
+        ? cleanCourseCode
+        : `${cleanSubjectCode}_${cleanCourseCode}`;
+
       let existingCourseClass = await tx.course_Class.findUnique({
         where: { source_id_course_class: item.sourceCourseClassId },
       });
       if (!existingCourseClass) {
         existingCourseClass = await tx.course_Class.findUnique({
-          where: { course_code: item.courseCode },
+          where: { course_code: formattedCourseCode },
         });
       }
 
@@ -295,7 +304,7 @@ export const SyncService = async (payload: TrainingSyncCourseClassesInput) => {
           where: { id_course_class: existingCourseClass.id_course_class },
           data: {
             source_id_course_class: item.sourceCourseClassId,
-            course_code: item.courseCode,
+            course_code: formattedCourseCode,
             id_subject: subject.id_subject,
             id_teacher: teacher.id_teacher,
           },
@@ -305,7 +314,7 @@ export const SyncService = async (payload: TrainingSyncCourseClassesInput) => {
         await tx.course_Class.create({
           data: {
             source_id_course_class: item.sourceCourseClassId,
-            course_code: item.courseCode,
+            course_code: formattedCourseCode,
             id_subject: subject.id_subject,
             id_teacher: teacher.id_teacher,
           },
