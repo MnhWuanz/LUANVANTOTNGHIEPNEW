@@ -343,6 +343,8 @@ async function findActiveFaceEnrollment(imageBuffer: Buffer) {
     throw new AttendanceCheckInError(404, 'Không nhận diện được khuôn mặt');
   }
 
+  console.log('faceMatch', faceMatch);
+
   const faceEnrollment = await prisma.face_Enrollment.findFirst({
     where: {
       face_id: faceMatch.faceId,
@@ -359,7 +361,7 @@ async function findActiveFaceEnrollment(imageBuffer: Buffer) {
       },
     },
   });
-
+  console.log('faceEnrollment', faceEnrollment);
   if (!faceEnrollment) {
     throw new AttendanceCheckInError(
       404,
