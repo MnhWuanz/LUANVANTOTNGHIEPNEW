@@ -18,6 +18,7 @@ const assertTeacherCanEnrollStudent = async (
   teacherUserId: number,
   studentId: number,
 ) => {
+  // Kiểm tra giáo viên có quyền đăng ký khuôn mặt cho sinh viên này
   const teacher = await prisma.teacher.findUnique({
     where: {
       id_user: teacherUserId,
@@ -77,6 +78,7 @@ const enrollStudentFace = async (params: {
   imageBuffer: Buffer;
   mimeType: string;
 }) => {
+  // Kiểm tra giáo viên có quyền đăng ký khuôn mặt cho sinh viên này
   const { student } = await assertTeacherCanEnrollStudent(
     params.teacherUserId,
     params.studentId,
@@ -173,11 +175,11 @@ const enrollStudentFace = async (params: {
     const replacedFaceIds = result.replacedEnrollments
       .filter((item) => item.collection_id === indexedFace!.collectionId)
       .map((item) => item.face_id);
-
+    // Xóa các khuôn mặt cũ
     await AwsRekognitionService.deleteFaces(replacedFaceIds).catch((error) => {
       console.error('Delete replaced Rekognition faces failed:', error);
     });
-
+    // Trả về kết quả
     return {
       idFaceEnrollment: result.createdEnrollment.id_face_enrollment,
       student: {
@@ -193,10 +195,11 @@ const enrollStudentFace = async (params: {
       enrolledAt: result.createdEnrollment.enrolled_at,
     };
   } catch (error) {
+    //  lỗi từ AWS Rekognition
     if (error instanceof RekognitionImageError) {
       throw new FaceEnrollmentError(400, error.message);
     }
-
+    // lỗi từ AWS S3
     if (indexedFace) {
       await AwsRekognitionService.deleteFaces([
         indexedFace.faceId,
@@ -204,13 +207,12 @@ const enrollStudentFace = async (params: {
         console.error('Cleanup indexed Rekognition face failed:', cleanupError);
       });
     }
-
+    // Xóa ảnh trên S3 nếu có lỗi
     if (uploadedImageKey) {
       await AwsS3Service.deleteObject(uploadedImageKey).catch((cleanupError) => {
         console.error('Cleanup S3 face enrollment image failed:', cleanupError);
       });
     }
-
     throw error;
   }
 };

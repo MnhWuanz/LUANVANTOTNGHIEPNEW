@@ -1,14 +1,16 @@
 import { RequestHandler } from 'express';
 import multer from 'multer';
 
-const MAX_FACE_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_FACE_IMAGE_SIZE = 5 * 1024 * 1024;//5mb
 const ALLOWED_FACE_IMAGE_MIME_TYPES = new Set([
   'image/jpeg',
   'image/jpg',
   'image/png',
   'image/webp',
-]);
+]);// các định dạng file ảnh được phép
 
+
+//cấu hình multer
 export const faceImageUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -19,12 +21,12 @@ export const faceImageUpload = multer({
       cb(new Error('Ảnh đăng ký phải là JPG, PNG hoặc WEBP'));
       return;
     }
-
     cb(null, true);
   },
 });
 
 const faceImageSingleUpload = faceImageUpload.single('file');
+//Kiểm tra các file có cùng tên như thế này để tránh lỗi upload
 const attendanceFaceImageUpload = faceImageUpload.fields([
   { name: 'file', maxCount: 1 },
   { name: 'image', maxCount: 1 },

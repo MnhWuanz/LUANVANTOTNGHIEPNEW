@@ -11,9 +11,9 @@ import { AwsRekognitionService } from 'services/aws_rekognition.service';
 import { updateAttendanceSessionStatuses } from 'services/attendance_session.service';
 import { sendAttendanceSuccessEmail } from 'utils/sendEmail';
 
-const LATE_THRESHOLD_MINUTES = 30;
-const APP_TIME_ZONE = 'Asia/Ho_Chi_Minh';
-
+const LATE_THRESHOLD_MINUTES = 30; // Ngưỡng thời gian trễ
+const APP_TIME_ZONE = 'Asia/Ho_Chi_Minh'; // Múi giờ
+// Class lỗi
 export class AttendanceCheckInError extends Error {
   statusCode: number;
 
@@ -22,7 +22,7 @@ export class AttendanceCheckInError extends Error {
     this.statusCode = statusCode;
   }
 }
-
+//Khai báo các giá trị cần lấy trong bảng kiosk khi xác thực
 const kioskAuthSelect = {
   id_kiosk: true,
   device_code: true,
@@ -39,7 +39,7 @@ const kioskAuthSelect = {
     },
   },
 } as const;
-
+// Khai báo các giá trị cần lấy trong bảng kiosk
 const kioskResponseSelect = {
   id_kiosk: true,
   device_code: true,
@@ -55,7 +55,7 @@ const kioskResponseSelect = {
     },
   },
 } as const;
-
+// Khai báo các giá trị cần lấy trong bảng attendance_record
 const attendanceRecordInclude = {
   student: {
     select: {
@@ -94,20 +94,20 @@ const attendanceRecordInclude = {
     },
   },
 } as const;
-
+// Lấy giá trị từ header
 function getHeaderValue(value: string | string[] | undefined) {
   if (Array.isArray(value)) {
     return value[0] ?? null;
   }
   return value ?? null;
 }
-
+// Định dạng ca học
 function buildShiftLabel(startShiftName: string, endShiftName: string) {
   return startShiftName === endShiftName
     ? startShiftName
     : `${startShiftName} - ${endShiftName}`;
 }
-
+// Fomat lại thời gina
 function toDateOnlyUtc(date: Date) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: APP_TIME_ZONE,
@@ -124,7 +124,7 @@ function toDateOnlyUtc(date: Date) {
 
   return new Date(Date.UTC(values.year, values.month - 1, values.day));
 }
-
+// Định dạng kiosk response
 function mapKiosk(kiosk: any) {
   return {
     idKiosk: kiosk.id_kiosk,
@@ -133,7 +133,7 @@ function mapKiosk(kiosk: any) {
     roomCode: kiosk.room?.room_code ?? null,
   };
 }
-
+// Định dạng phiên điểm danh response
 function mapAttendanceSession(session: any) {
   const schedule = session.course_schedule;
   return {
@@ -149,7 +149,7 @@ function mapAttendanceSession(session: any) {
     shift: buildShiftLabel(schedule.start_shift.name, schedule.end_shift.name),
   };
 }
-
+// Định dạng bảng ghi điểm danh response
 function mapAttendanceRecord(record: any, duplicate: boolean) {
   const session = record.attendance_session;
   const schedule = session.course_schedule;
@@ -197,7 +197,7 @@ function mapAttendanceRecord(record: any, duplicate: boolean) {
       : null,
   };
 }
-
+//Xác thực kiosk
 async function authenticateKiosk(params: {
   deviceCode: string | null;
   deviceToken: string | null;
@@ -316,7 +316,7 @@ async function findTodaySessionsForKiosk(idRoom: number, now: Date) {
     },
   });
 }
-
+// Tìm 1 phiên điểm danh đang mở
 async function findOpenSessionForKiosk(idRoom: number, now: Date) {
   const sessions = await findOpenSessionsForKiosk(idRoom, now);
 
@@ -335,7 +335,7 @@ async function findOpenSessionForKiosk(idRoom: number, now: Date) {
   }
   return sessions[0];
 }
-
+// Tìm kiếm khuôn mặt sinh viên đã đăng ký
 async function findActiveFaceEnrollment(imageBuffer: Buffer) {
   const faceMatch = await AwsRekognitionService.searchStudentFace(imageBuffer);
 
@@ -371,7 +371,7 @@ async function findActiveFaceEnrollment(imageBuffer: Buffer) {
     faceEnrollment,
   };
 }
-
+// Tính trạng thái điểm danh
 function getAttendanceStatus(checkinTime: Date, checkinOpenAt: Date) {
   const lateAfter = new Date(
     checkinOpenAt.getTime() + LATE_THRESHOLD_MINUTES * 60 * 1000,
@@ -380,7 +380,7 @@ function getAttendanceStatus(checkinTime: Date, checkinOpenAt: Date) {
     ? AttendanceRecordStatus.LATE
     : AttendanceRecordStatus.PRESENT;
 }
-
+// Tìm kiếm bản ghi điểm danh đã có
 async function findExistingAttendanceRecord(params: {
   idAttendanceSession: number;
   idStudent: number;
@@ -395,7 +395,7 @@ async function findExistingAttendanceRecord(params: {
     include: attendanceRecordInclude,
   });
 }
-
+// HÀM CHECKIN KHUÔN MẶT
 const checkInByFace = async (params: {
   imageBuffer: Buffer;
   deviceCode: string | string[] | undefined;
@@ -485,7 +485,7 @@ const checkInByFace = async (params: {
     throw error;
   }
 };
-
+// Tìm phiên điểm danh hiện tại
 const getCurrentKioskSession = async (params: {
   deviceCode: string | string[] | undefined;
   deviceToken: string | string[] | undefined;
@@ -521,7 +521,7 @@ const getCurrentKioskSession = async (params: {
     session: mapAttendanceSession(sessions[0]),
   };
 };
-
+// Tìm tất cả phiên điểm danh trong ngày
 const getTodayKioskSessions = async (params: {
   deviceCode: string | string[] | undefined;
   deviceToken: string | string[] | undefined;

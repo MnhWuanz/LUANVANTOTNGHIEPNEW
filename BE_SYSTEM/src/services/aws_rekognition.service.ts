@@ -14,7 +14,7 @@ const rekognition = new RekognitionClient({
 });
 
 export class RekognitionImageError extends Error {}
-
+// Lấy ID collection từ biến môi trường
 function getCollectionId() {
   const collectionId = process.env.AWS_REKOGNITION_COLLECTION_ID;
 
@@ -24,7 +24,7 @@ function getCollectionId() {
 
   return collectionId;
 }
-
+// Tạo collection
 const ensureCollection = async () => {
   const collectionId = getCollectionId();
 
@@ -64,9 +64,11 @@ const assertSingleFace = async (imageBuffer: Buffer) => {
   );
 
   const faceCount = result.FaceDetails?.length ?? 0;
-
   if (faceCount !== 1) {
     throw new RekognitionImageError('Ảnh đăng ký phải có đúng 1 khuôn mặt');
+  }
+  if (result.FaceDetails[0].Sunglasses?.Value) {
+    throw new RekognitionImageError('Ảnh đăng ký không được đeo kính');
   }
 };
 

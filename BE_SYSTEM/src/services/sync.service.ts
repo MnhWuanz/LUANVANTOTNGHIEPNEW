@@ -348,5 +348,8 @@ export const SyncService = async (payload: TrainingSyncCourseClassesInput) => {
       message: 'Đồng bộ dữ liệu lớp học phần thành công',
       summary,
     };
+  }, {
+    timeout: 180000,
+    maxWait: 10000,
   });
 };

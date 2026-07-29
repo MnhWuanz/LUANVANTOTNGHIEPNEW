@@ -1,12 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Zod schema validate payload đồng bộ lớp học phần từ Phòng Đào tạo
- * sang hệ thống điểm danh.
- *
- * Dùng cho endpoint ví dụ:
- * POST /api/internal/training/sync-course-classes
- */
+
 
 const positiveInt = z.coerce.number().int().positive();
 
