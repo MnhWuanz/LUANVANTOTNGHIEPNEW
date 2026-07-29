@@ -265,21 +265,21 @@ export const SyncService = async (payload: TrainingSyncCourseClassesInput) => {
      * 6. Course classes
      */
     for (const item of payload.courseClasses) {
-      const subject = await tx.subject.findFirstOrThrow({
+      const subject = await tx.subject.findFirst({
         where: {
-          OR: [
-            { source_id_subject: item.sourceSubjectId },
-          ],
+          source_id_subject: item.sourceSubjectId,
         },
       });
 
-      const teacher = await tx.teacher.findFirstOrThrow({
+      const teacher = await tx.teacher.findFirst({
         where: {
-          OR: [
-            { source_id_teacher: item.sourceTeacherId },
-          ],
+          source_id_teacher: item.sourceTeacherId,
         },
       });
+
+      if (!subject || !teacher) {
+        continue;
+      }
 
       let existingCourseClass = await tx.course_Class.findUnique({
         where: { source_id_course_class: item.sourceCourseClassId },
@@ -318,37 +318,33 @@ export const SyncService = async (payload: TrainingSyncCourseClassesInput) => {
      * 7. Course schedules
      */
     for (const item of payload.courseSchedules) {
-      const courseClass = await tx.course_Class.findFirstOrThrow({
+      const courseClass = await tx.course_Class.findFirst({
         where: {
-          OR: [
-            { source_id_course_class: item.sourceCourseClassId },
-          ],
+          source_id_course_class: item.sourceCourseClassId,
         },
       });
 
-      const room = await tx.room.findFirstOrThrow({
+      const room = await tx.room.findFirst({
         where: {
-          OR: [
-            { source_id_room: item.sourceRoomId },
-          ],
+          source_id_room: item.sourceRoomId,
         },
       });
 
-      const startShift = await tx.shift.findFirstOrThrow({
+      const startShift = await tx.shift.findFirst({
         where: {
-          OR: [
-            { source_id_shift: item.sourceStartShiftId },
-          ],
+          source_id_shift: item.sourceStartShiftId,
         },
       });
 
-      const endShift = await tx.shift.findFirstOrThrow({
+      const endShift = await tx.shift.findFirst({
         where: {
-          OR: [
-            { source_id_shift: item.sourceEndShiftId },
-          ],
+          source_id_shift: item.sourceEndShiftId,
         },
       });
+
+      if (!courseClass || !room || !startShift || !endShift) {
+        continue;
+      }
 
       let existingSchedule = await tx.course_Schedule.findUnique({
         where: { source_id_course_schedule: item.sourceCourseScheduleId },
@@ -400,21 +396,21 @@ export const SyncService = async (payload: TrainingSyncCourseClassesInput) => {
      * 8. Enrollments
      */
     for (const item of payload.enrollments) {
-      const student = await tx.student.findFirstOrThrow({
+      const student = await tx.student.findFirst({
         where: {
-          OR: [
-            { source_id_student: item.sourceStudentId },
-          ],
+          source_id_student: item.sourceStudentId,
         },
       });
 
-      const courseClass = await tx.course_Class.findFirstOrThrow({
+      const courseClass = await tx.course_Class.findFirst({
         where: {
-          OR: [
-            { source_id_course_class: item.sourceCourseClassId },
-          ],
+          source_id_course_class: item.sourceCourseClassId,
         },
       });
+
+      if (!student || !courseClass) {
+        continue;
+      }
 
       // 1. Look up by composite unique key (id_student, id_course_class)
       let existingEnrollment = await tx.enrollment.findUnique({
