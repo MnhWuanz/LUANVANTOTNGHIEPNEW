@@ -412,24 +412,19 @@ export const SyncService = async (payload: TrainingSyncCourseClassesInput) => {
         },
       });
 
-      const existingEnrollment = item.sourceEnrollmentId
-        ? await tx.enrollment.findFirst({
-            where: {
-              OR: [
-                { source_id_enrollment: item.sourceEnrollmentId },
-                {
-                  id_student: student.id_student,
-                  id_course_class: courseClass.id_course_class,
-                },
-              ],
-            },
-          })
-        : await tx.enrollment.findFirst({
-            where: {
+      const existingEnrollment = await tx.enrollment.findFirst({
+        where: {
+          OR: [
+            {
               id_student: student.id_student,
               id_course_class: courseClass.id_course_class,
             },
-          });
+            ...(item.sourceEnrollmentId
+              ? [{ source_id_enrollment: item.sourceEnrollmentId }]
+              : []),
+          ],
+        },
+      });
 
       if (existingEnrollment) {
         await tx.enrollment.update({
@@ -437,8 +432,6 @@ export const SyncService = async (payload: TrainingSyncCourseClassesInput) => {
           data: {
             source_id_enrollment:
               item.sourceEnrollmentId ?? existingEnrollment.source_id_enrollment,
-            id_student: student.id_student,
-            id_course_class: courseClass.id_course_class,
           },
         });
         summary.enrollments.updated!++;
