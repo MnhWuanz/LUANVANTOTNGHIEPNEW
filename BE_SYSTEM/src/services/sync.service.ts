@@ -2,11 +2,14 @@ import { UserRole } from '@prisma/client';
 import { prisma } from 'config/client';
 import { TrainingSyncCourseClassesInput } from 'validation/sync.validation';
 import bcrypt from 'bcrypt';
+
 const SALT_ROUNDS = 10;
+
 type CountSummary = {
   created: number;
   updated?: number;
 };
+
 export type TrainingSyncSummary = {
   users: CountSummary;
   subjects: CountSummary;
@@ -18,6 +21,7 @@ export type TrainingSyncSummary = {
   courseSchedules: CountSummary;
   enrollments: CountSummary;
 };
+
 export type TrainingSyncResult = {
   success: true;
   message: string;
@@ -55,102 +59,147 @@ export const SyncService = async (payload: TrainingSyncCourseClassesInput) => {
      * 1. Subjects
      */
     for (const item of payload.subjects) {
-      const existing = await tx.subject.findUnique({
-        where: { source_id_subject: item.sourceSubjectId },
-        select: { id_subject: true },
+      const existing = await tx.subject.findFirst({
+        where: {
+          OR: [
+            { source_id_subject: item.sourceSubjectId },
+            { subject_code: item.subjectCode },
+          ],
+        },
       });
-      existing
-        ? (await tx.subject.update({
-            where: { source_id_subject: item.sourceSubjectId },
-            data: {
-              subject_code: item.subjectCode,
-              name: item.name,
-            },
-          }),
-          summary.subjects.updated!++)
-        : (await tx.subject.create({
-            data: {
-              source_id_subject: item.sourceSubjectId,
-              subject_code: item.subjectCode,
-              name: item.name,
-            },
-          }),
-          summary.subjects.created++);
+
+      if (existing) {
+        await tx.subject.update({
+          where: { id_subject: existing.id_subject },
+          data: {
+            source_id_subject: item.sourceSubjectId,
+            subject_code: item.subjectCode,
+            name: item.name,
+          },
+        });
+        summary.subjects.updated!++;
+      } else {
+        await tx.subject.create({
+          data: {
+            source_id_subject: item.sourceSubjectId,
+            subject_code: item.subjectCode,
+            name: item.name,
+          },
+        });
+        summary.subjects.created++;
+      }
     }
+
     /**
      * 2. Rooms
      */
     for (const item of payload.rooms) {
-      const existing = await tx.room.findUnique({
-        where: { source_id_room: item.sourceRoomId },
+      const existing = await tx.room.findFirst({
+        where: {
+          OR: [
+            { source_id_room: item.sourceRoomId },
+            { room_code: item.room_code },
+          ],
+        },
       });
-      existing
-        ? (await tx.room.update({
-            where: { source_id_room: item.sourceRoomId },
-            data: {
-              room_code: item.room_code,
-              capacity: item.capacity,
-            },
-          }),
-          summary.rooms.updated!++)
-        : (await tx.room.create({
-            data: {
-              source_id_room: item.sourceRoomId,
-              room_code: item.room_code,
-              capacity: item.capacity,
-            },
-          }),
-          summary.rooms.created++);
+
+      if (existing) {
+        await tx.room.update({
+          where: { id_room: existing.id_room },
+          data: {
+            source_id_room: item.sourceRoomId,
+            room_code: item.room_code,
+            capacity: item.capacity,
+          },
+        });
+        summary.rooms.updated!++;
+      } else {
+        await tx.room.create({
+          data: {
+            source_id_room: item.sourceRoomId,
+            room_code: item.room_code,
+            capacity: item.capacity,
+          },
+        });
+        summary.rooms.created++;
+      }
     }
 
     /**
      * 3. Shifts
      */
     for (const item of payload.shifts) {
-      const existing = await tx.shift.findUnique({
-        where: { source_id_shift: item.sourceShiftId },
+      const existing = await tx.shift.findFirst({
+        where: {
+          OR: [
+            { source_id_shift: item.sourceShiftId },
+            { name: item.name },
+          ],
+        },
       });
-      existing
-        ? (await tx.shift.update({
-            where: { source_id_shift: item.sourceShiftId },
-            data: {
-              name: item.name,
-              start_time: toTime(item.startTime),
-              end_time: toTime(item.endTime),
-            },
-          }),
-          summary.shifts.updated!++)
-        : (await tx.shift.create({
-            data: {
-              source_id_shift: item.sourceShiftId,
-              name: item.name,
-              start_time: toTime(item.startTime),
-              end_time: toTime(item.endTime),
-            },
-          }),
-          summary.shifts.created++);
+
+      if (existing) {
+        await tx.shift.update({
+          where: { id_shift: existing.id_shift },
+          data: {
+            source_id_shift: item.sourceShiftId,
+            name: item.name,
+            start_time: toTime(item.startTime),
+            end_time: toTime(item.endTime),
+          },
+        });
+        summary.shifts.updated!++;
+      } else {
+        await tx.shift.create({
+          data: {
+            source_id_shift: item.sourceShiftId,
+            name: item.name,
+            start_time: toTime(item.startTime),
+            end_time: toTime(item.endTime),
+          },
+        });
+        summary.shifts.created++;
+      }
     }
+
     /**
      * 4. Teachers + Users
      */
     for (const item of payload.teachers) {
-      const existingTeacher = await tx.teacher.findUnique({
+      const existingTeacher = await tx.teacher.findFirst({
         where: {
-          source_id_teacher: item.sourceTeacherId,
+          OR: [
+            { source_id_teacher: item.sourceTeacherId },
+            { teacher_code: item.teacherCode },
+          ],
         },
       });
+
       if (!existingTeacher) {
-        const passworDefault = item.email! + '123456';
-        const hashedPassword = await bcrypt.hash(passworDefault, SALT_ROUNDS);
-        const user = await tx.user.create({
-          data: {
-            email: item.email!,
-            password_hash: hashedPassword,
-            role: UserRole.TEACHER,
-            is_active: true,
-            createdAt: new Date(),
-          },
+        const teacherEmail =
+          item.email && item.email.trim() !== ''
+            ? item.email
+            : `${item.teacherCode.toLowerCase()}@stu.edu.vn`;
+
+        let user = await tx.user.findUnique({
+          where: { email: teacherEmail },
         });
+
+        if (!user) {
+          const passworDefault = teacherEmail + '123456';
+          const hashedPassword = await bcrypt.hash(passworDefault, SALT_ROUNDS);
+          user = await tx.user.create({
+            data: {
+              email: teacherEmail,
+              password_hash: hashedPassword,
+              role: UserRole.TEACHER,
+              is_active: true,
+              createdAt: new Date(),
+            },
+          });
+          summary.users.created++;
+        }
+
         await tx.teacher.create({
           data: {
             source_id_teacher: item.sourceTeacherId,
@@ -160,7 +209,15 @@ export const SyncService = async (payload: TrainingSyncCourseClassesInput) => {
           },
         });
         summary.teachers.created++;
-        summary.users.created++;
+      } else {
+        await tx.teacher.update({
+          where: { id_teacher: existingTeacher.id_teacher },
+          data: {
+            source_id_teacher: item.sourceTeacherId,
+            teacher_code: item.teacherCode,
+            full_name: item.fullName,
+          },
+        });
       }
     }
 
@@ -168,179 +225,233 @@ export const SyncService = async (payload: TrainingSyncCourseClassesInput) => {
      * 5. Students
      */
     for (const item of payload.students) {
-      const existingStudent = await tx.student.findUnique({
+      const existingStudent = await tx.student.findFirst({
         where: {
-          source_id_student: item.sourceStudentId,
+          OR: [
+            { source_id_student: item.sourceStudentId },
+            { student_code: item.student_code },
+          ],
         },
       });
-      existingStudent
-        ? (await tx.student.update({
-            where: {
-              source_id_student: item.sourceStudentId,
-            },
-            data: {
-              student_code: item.student_code,
-              full_name: item.full_name,
-              email: item.email!,
-              class: item.class,
-            },
-          }),
-          summary.students.updated!++)
-        : (await tx.student.create({
-            data: {
-              source_id_student: item.sourceStudentId,
-              student_code: item.student_code,
-              full_name: item.full_name,
-              email: item.email!,
-              class: item.class,
-              is_face_registered: false,
-            },
-          }),
-          summary.students.created++);
+
+      if (existingStudent) {
+        await tx.student.update({
+          where: { id_student: existingStudent.id_student },
+          data: {
+            source_id_student: item.sourceStudentId,
+            student_code: item.student_code,
+            full_name: item.full_name,
+            email: item.email || existingStudent.email,
+            class: item.class,
+          },
+        });
+        summary.students.updated!++;
+      } else {
+        await tx.student.create({
+          data: {
+            source_id_student: item.sourceStudentId,
+            student_code: item.student_code,
+            full_name: item.full_name,
+            email: item.email!,
+            class: item.class,
+            is_face_registered: false,
+          },
+        });
+        summary.students.created++;
+      }
     }
+
     /**
      * 6. Course classes
      */
     for (const item of payload.courseClasses) {
-      const subject = await tx.subject.findUniqueOrThrow({
+      const subject = await tx.subject.findFirstOrThrow({
         where: {
-          source_id_subject: item.sourceSubjectId,
+          OR: [
+            { source_id_subject: item.sourceSubjectId },
+          ],
         },
       });
-      const teacher = await tx.teacher.findUniqueOrThrow({
+
+      const teacher = await tx.teacher.findFirstOrThrow({
         where: {
-          source_id_teacher: item.sourceTeacherId,
+          OR: [
+            { source_id_teacher: item.sourceTeacherId },
+          ],
         },
       });
-      const existingCourseClass = await tx.course_Class.findUnique({
+
+      const existingCourseClass = await tx.course_Class.findFirst({
         where: {
-          source_id_course_class: item.sourceCourseClassId,
+          OR: [
+            { source_id_course_class: item.sourceCourseClassId },
+            { course_code: item.courseCode },
+          ],
         },
       });
-      existingCourseClass
-        ? (await tx.course_Class.update({
-            where: {
-              source_id_course_class: item.sourceCourseClassId,
-            },
-            data: {
-              course_code: item.courseCode,
-              id_subject: subject.id_subject,
-              id_teacher: teacher.id_teacher,
-            },
-          }),
-          summary.courseClasses.updated!++)
-        : (await tx.course_Class.create({
-            data: {
-              source_id_course_class: item.sourceCourseClassId,
-              course_code: item.courseCode,
-              id_subject: subject.id_subject,
-              id_teacher: teacher.id_teacher,
-            },
-          }),
-          summary.courseClasses.created++);
+
+      if (existingCourseClass) {
+        await tx.course_Class.update({
+          where: { id_course_class: existingCourseClass.id_course_class },
+          data: {
+            source_id_course_class: item.sourceCourseClassId,
+            course_code: item.courseCode,
+            id_subject: subject.id_subject,
+            id_teacher: teacher.id_teacher,
+          },
+        });
+        summary.courseClasses.updated!++;
+      } else {
+        await tx.course_Class.create({
+          data: {
+            source_id_course_class: item.sourceCourseClassId,
+            course_code: item.courseCode,
+            id_subject: subject.id_subject,
+            id_teacher: teacher.id_teacher,
+          },
+        });
+        summary.courseClasses.created++;
+      }
     }
 
     /**
      * 7. Course schedules
      */
     for (const item of payload.courseSchedules) {
-      const courseClass = await tx.course_Class.findUniqueOrThrow({
+      const courseClass = await tx.course_Class.findFirstOrThrow({
         where: {
           source_id_course_class: item.sourceCourseClassId,
         },
       });
 
-      const room = await tx.room.findUniqueOrThrow({
+      const room = await tx.room.findFirstOrThrow({
         where: {
           source_id_room: item.sourceRoomId,
         },
       });
 
-      const startShift = await tx.shift.findUniqueOrThrow({
+      const startShift = await tx.shift.findFirstOrThrow({
         where: {
-          source_id_shift: item.sourceStartShiftId,
+          OR: [
+            { source_id_shift: item.sourceStartShiftId },
+          ],
         },
       });
-      const endShift = await tx.shift.findUniqueOrThrow({
+
+      const endShift = await tx.shift.findFirstOrThrow({
         where: {
-          source_id_shift: item.sourceEndShiftId,
+          OR: [
+            { source_id_shift: item.sourceEndShiftId },
+          ],
         },
       });
-      const existingSchedule = await tx.course_Schedule.findUnique({
+
+      const existingSchedule = await tx.course_Schedule.findFirst({
         where: {
-          source_id_course_schedule: item.sourceCourseScheduleId,
-        },
-      });
-      existingSchedule
-        ? (await tx.course_Schedule.update({
-            where: {
-              source_id_course_schedule: item.sourceCourseScheduleId,
-            },
-            data: {
+          OR: [
+            { source_id_course_schedule: item.sourceCourseScheduleId },
+            {
               id_course_class: courseClass.id_course_class,
               id_room: room.id_room,
               id_start_shift: startShift.id_shift,
-              id_end_shift: endShift.id_shift,
-              start_date: toDateOnly(item.startDate),
-              end_date: toDateOnly(item.endDate),
               day_of_week: item.dayOfWeek,
             },
-          }),
-          summary.courseSchedules.updated!++)
-        : (await tx.course_Schedule.create({
-            data: {
-              source_id_course_schedule: item.sourceCourseScheduleId,
-              id_course_class: courseClass.id_course_class,
-              id_room: room.id_room,
-              id_start_shift: startShift.id_shift,
-              id_end_shift: endShift.id_shift,
-              start_date: toDateOnly(item.startDate),
-              end_date: toDateOnly(item.endDate),
-              day_of_week: item.dayOfWeek,
-            },
-          }),
-          summary.courseSchedules.created++);
+          ],
+        },
+      });
+
+      if (existingSchedule) {
+        await tx.course_Schedule.update({
+          where: { id_course_schedule: existingSchedule.id_course_schedule },
+          data: {
+            source_id_course_schedule: item.sourceCourseScheduleId,
+            id_course_class: courseClass.id_course_class,
+            id_room: room.id_room,
+            id_start_shift: startShift.id_shift,
+            id_end_shift: endShift.id_shift,
+            start_date: toDateOnly(item.startDate),
+            end_date: toDateOnly(item.endDate),
+            day_of_week: item.dayOfWeek,
+          },
+        });
+        summary.courseSchedules.updated!++;
+      } else {
+        await tx.course_Schedule.create({
+          data: {
+            source_id_course_schedule: item.sourceCourseScheduleId,
+            id_course_class: courseClass.id_course_class,
+            id_room: room.id_room,
+            id_start_shift: startShift.id_shift,
+            id_end_shift: endShift.id_shift,
+            start_date: toDateOnly(item.startDate),
+            end_date: toDateOnly(item.endDate),
+            day_of_week: item.dayOfWeek,
+          },
+        });
+        summary.courseSchedules.created++;
+      }
     }
 
     /**
      * 8. Enrollments
      */
     for (const item of payload.enrollments) {
-      const student = await tx.student.findUniqueOrThrow({
+      const student = await tx.student.findFirstOrThrow({
         where: {
-          source_id_student: item.sourceStudentId,
+          OR: [
+            { source_id_student: item.sourceStudentId },
+          ],
         },
       });
 
-      const courseClass = await tx.course_Class.findUniqueOrThrow({
+      const courseClass = await tx.course_Class.findFirstOrThrow({
         where: {
-          source_id_course_class: item.sourceCourseClassId,
+          OR: [
+            { source_id_course_class: item.sourceCourseClassId },
+          ],
         },
       });
-      const existingEnrollment = await tx.enrollment.findUnique({
-        where: {
-          source_id_enrollment: item.sourceEnrollmentId!,
-        },
-      });
-      existingEnrollment
-        ? (await tx.enrollment.update({
+
+      const existingEnrollment = item.sourceEnrollmentId
+        ? await tx.enrollment.findFirst({
             where: {
-              source_id_enrollment: item.sourceEnrollmentId!,
+              OR: [
+                { source_id_enrollment: item.sourceEnrollmentId },
+                {
+                  id_student: student.id_student,
+                  id_course_class: courseClass.id_course_class,
+                },
+              ],
             },
-            data: {
+          })
+        : await tx.enrollment.findFirst({
+            where: {
               id_student: student.id_student,
               id_course_class: courseClass.id_course_class,
             },
-          }),
-          summary.enrollments.updated!++)
-        : (await tx.enrollment.create({
-            data: {
-              source_id_enrollment: item.sourceEnrollmentId!,
-              id_student: student.id_student,
-              id_course_class: courseClass.id_course_class,
-            },
-          }),
-          summary.enrollments.created++);
+          });
+
+      if (existingEnrollment) {
+        await tx.enrollment.update({
+          where: { id_enrollment: existingEnrollment.id_enrollment },
+          data: {
+            source_id_enrollment:
+              item.sourceEnrollmentId ?? existingEnrollment.source_id_enrollment,
+            id_student: student.id_student,
+            id_course_class: courseClass.id_course_class,
+          },
+        });
+        summary.enrollments.updated!++;
+      } else {
+        await tx.enrollment.create({
+          data: {
+            source_id_enrollment: item.sourceEnrollmentId!,
+            id_student: student.id_student,
+            id_course_class: courseClass.id_course_class,
+          },
+        });
+        summary.enrollments.created++;
+      }
     }
 
     return {
