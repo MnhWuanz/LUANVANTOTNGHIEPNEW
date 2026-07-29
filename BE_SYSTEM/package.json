@@ -7,7 +7,7 @@
     "start": "node src/app.ts",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
-    "db:deploy": "prisma migrate deploy",
+    "db:deploy": "prisma db push",
     "db:seed": "prisma db seed",
     "start:prod": "prisma generate && prisma db push && prisma db seed && npx ts-node -r tsconfig-paths/register src/app.ts",
     "dev": "nodemon src/app.ts"
