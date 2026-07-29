@@ -34,7 +34,7 @@ const attendanceFaceImageUpload = faceImageUpload.fields([
   { name: 'faceImage', maxCount: 1 },
 ]);
 
-function getFirstUploadedFile(req: Parameters<RequestHandler>[0]) {
+function getFirstUploadedFile(req: any): Express.Multer.File | null {
   if (req.file) {
     return req.file;
   }
