@@ -71,6 +71,8 @@ export const TrainingStudentSchema = z.object({
   class: z.string().trim().min(1).max(100),
 });
 
+
+
 export const TrainingCourseClassSchema = z.object({
   sourceCourseClassId: positiveInt,
   courseCode: z.string().trim().min(1).max(100),
