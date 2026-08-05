@@ -58,6 +58,30 @@ const apiRoutes = (app: Express) => {
     UserController.updateTeacher,
   );
   // ==================== ATTENDANCE_SESSION ROUTES ====================
+  router.patch(
+    '/attendance-sessions/:id/cancel',
+    isLogin,
+    isAdmin,
+    AttendanceSessionController.cancelSession,
+  );
+  router.post(
+    '/attendance-sessions/manual',
+    isLogin,
+    isAdmin,
+    AttendanceSessionController.createManualSession,
+  );
+  router.post(
+    '/attendance-sessions/check-conflicts',
+    isLogin,
+    isAdmin,
+    AttendanceSessionController.checkConflicts,
+  );
+  router.get(
+    '/attendance-sessions/course-schedules',
+    isLogin,
+    isAdmin,
+    AttendanceSessionController.getAllCourseSchedules,
+  );
   router.post(
     '/attendance-sessions/generate',
     isLogin,

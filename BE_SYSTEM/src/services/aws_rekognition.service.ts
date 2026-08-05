@@ -123,7 +123,7 @@ const searchStudentFace = async (imageBuffer: Buffer) => {
   const threshold = Number(
     process.env.FACE_MATCH_THRESHOLD ?? DEFAULT_FACE_MATCH_THRESHOLD,
   );
-
+  
   const result = await rekognition.send(
     new SearchFacesByImageCommand({
       CollectionId: collectionId,

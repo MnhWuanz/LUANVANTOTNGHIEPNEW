@@ -1,4 +1,4 @@
-﻿import { AttendanceSessionStatus } from '@prisma/client';
+import { AttendanceSessionStatus } from '@prisma/client';
 import { prisma } from 'config/client';
 
 const APP_TIME_ZONE = 'Asia/Ho_Chi_Minh';
@@ -130,7 +130,10 @@ export const closeExpiredAttendanceSessions = async () => {
   const result = await prisma.attendance_Session.updateMany({
     where: {
       status: {
-        not: AttendanceSessionStatus.CLOSED,
+        in: [
+          AttendanceSessionStatus.NOT_STARTED,
+          AttendanceSessionStatus.OPEN,
+        ],
       },
       checkin_close_at: {
         lte: now,
@@ -152,7 +155,10 @@ export const updateAttendanceSessionStatuses = async () => {
   const closed = await prisma.attendance_Session.updateMany({
     where: {
       status: {
-        not: AttendanceSessionStatus.CLOSED,
+        in: [
+          AttendanceSessionStatus.NOT_STARTED,
+          AttendanceSessionStatus.OPEN,
+        ],
       },
       checkin_close_at: {
         lte: now,
@@ -238,6 +244,10 @@ const getAllAttendanceSessions = async (date?: Date | string) => {
       checkinCloseAt: session.checkin_close_at.toISOString(),
       openedAt: session.opened_at?.toISOString() ?? null,
       closedAt: session.closed_at?.toISOString() ?? null,
+      isManual: session.is_manual,
+      manualReason: session.manual_reason ?? null,
+      cancelledAt: session.cancelled_at?.toISOString() ?? null,
+      cancelReason: session.cancel_reason ?? null,
       subjectName: schedule.course_class.subject.name,
       courseCode: schedule.course_class.course_code,
       room: schedule.room.room_code,
@@ -253,6 +263,317 @@ const getAllAttendanceSessions = async (date?: Date | string) => {
   });
 };
 
+function buildShiftLabel(startShiftName: string, endShiftName: string) {
+  return startShiftName === endShiftName
+    ? startShiftName
+    : `${startShiftName} - ${endShiftName}`;
+}
+
+const cancelAttendanceSession = async (params: {
+  attendanceSessionId: number;
+  reason: string;
+}) => {
+  const session = await prisma.attendance_Session.findUnique({
+    where: { id_attendance_session: params.attendanceSessionId },
+    select: {
+      id_attendance_session: true,
+      status: true,
+    },
+  });
+
+  if (!session) {
+    return { error: 'NOT_FOUND' as const };
+  }
+
+  if (session.status === AttendanceSessionStatus.CLOSED) {
+    return { error: 'ALREADY_CLOSED' as const };
+  }
+
+  if (session.status === AttendanceSessionStatus.CANCELLED) {
+    return { error: 'ALREADY_CANCELLED' as const };
+  }
+
+  await prisma.attendance_Session.update({
+    where: { id_attendance_session: params.attendanceSessionId },
+    data: {
+      status: AttendanceSessionStatus.CANCELLED,
+      cancelled_at: new Date(),
+      cancel_reason: params.reason,
+    },
+  });
+
+  return { success: true as const };
+};
+
+const checkScheduleConflicts = async (params: {
+  idCourseSchedule: number;
+  sessionDate: string;
+}) => {
+  const schedule = await prisma.course_Schedule.findUnique({
+    where: { id_course_schedule: params.idCourseSchedule },
+    include: {
+      start_shift: true,
+      end_shift: true,
+      room: true,
+      course_class: {
+        include: {
+          subject: true,
+          teacher: true,
+        },
+      },
+    },
+  });
+
+  if (!schedule) {
+    return { error: 'SCHEDULE_NOT_FOUND' as const };
+  }
+
+  const sessionDateUtc = new Date(`${params.sessionDate}T00:00:00.000Z`);
+  const checkinOpenAt = combineDateAndTime(
+    sessionDateUtc,
+    schedule.start_shift.start_time,
+  );
+  const checkinCloseAt = combineDateAndTime(
+    sessionDateUtc,
+    schedule.end_shift.end_time,
+  );
+
+  // Check phiên đã tồn tại cho schedule + ngày này
+  const existingSession = await prisma.attendance_Session.findUnique({
+    where: {
+      id_course_schedule_session_date: {
+        id_course_schedule: params.idCourseSchedule,
+        session_date: sessionDateUtc,
+      },
+    },
+    select: { id_attendance_session: true },
+  });
+
+  // Check trùng phòng + giờ (overlap)
+  const conflicts = await prisma.attendance_Session.findMany({
+    where: {
+      session_date: sessionDateUtc,
+      status: {
+        not: AttendanceSessionStatus.CANCELLED,
+      },
+      course_schedule: {
+        id_room: schedule.id_room,
+      },
+      checkin_open_at: { lt: checkinCloseAt },
+      checkin_close_at: { gt: checkinOpenAt },
+    },
+    include: {
+      course_schedule: {
+        include: {
+          course_class: {
+            include: {
+              subject: true,
+              teacher: true,
+            },
+          },
+          start_shift: true,
+          end_shift: true,
+        },
+      },
+    },
+  });
+
+  return {
+    hasExisting: !!existingSession,
+    hasConflict: conflicts.length > 0,
+    schedule: {
+      idCourseSchedule: schedule.id_course_schedule,
+      subjectName: schedule.course_class.subject.name,
+      courseCode: schedule.course_class.course_code,
+      teacherName: schedule.course_class.teacher.full_name,
+      room: schedule.room.room_code,
+      shift: buildShiftLabel(
+        schedule.start_shift.name,
+        schedule.end_shift.name,
+      ),
+    },
+    conflicts: conflicts.map((c) => {
+      const cs = c.course_schedule;
+      return {
+        subjectName: cs.course_class.subject.name,
+        courseCode: cs.course_class.course_code,
+        teacherName: cs.course_class.teacher.full_name,
+        room: schedule.room.room_code,
+        shift: buildShiftLabel(cs.start_shift.name, cs.end_shift.name),
+        checkinOpenAt: c.checkin_open_at.toISOString(),
+        checkinCloseAt: c.checkin_close_at.toISOString(),
+      };
+    }),
+  };
+};
+
+const createManualAttendanceSession = async (params: {
+  idCourseSchedule: number;
+  sessionDate: string;
+  reason?: string;
+}) => {
+  const schedule = await prisma.course_Schedule.findUnique({
+    where: { id_course_schedule: params.idCourseSchedule },
+    include: {
+      start_shift: true,
+      end_shift: true,
+      room: true,
+      course_class: {
+        include: {
+          subject: true,
+          teacher: true,
+        },
+      },
+    },
+  });
+
+  if (!schedule) {
+    return { error: 'SCHEDULE_NOT_FOUND' as const };
+  }
+
+  const sessionDateUtc = new Date(`${params.sessionDate}T00:00:00.000Z`);
+  const checkinOpenAt = combineDateAndTime(
+    sessionDateUtc,
+    schedule.start_shift.start_time,
+  );
+  const checkinCloseAt = combineDateAndTime(
+    sessionDateUtc,
+    schedule.end_shift.end_time,
+  );
+
+  // Check phiên đã tồn tại
+  const existingSession = await prisma.attendance_Session.findUnique({
+    where: {
+      id_course_schedule_session_date: {
+        id_course_schedule: params.idCourseSchedule,
+        session_date: sessionDateUtc,
+      },
+    },
+    select: { id_attendance_session: true },
+  });
+
+  if (existingSession) {
+    return { error: 'ALREADY_EXISTS' as const };
+  }
+
+  // Check trùng phòng + giờ
+  const conflicts = await prisma.attendance_Session.findMany({
+    where: {
+      session_date: sessionDateUtc,
+      status: {
+        not: AttendanceSessionStatus.CANCELLED,
+      },
+      course_schedule: {
+        id_room: schedule.id_room,
+      },
+      checkin_open_at: { lt: checkinCloseAt },
+      checkin_close_at: { gt: checkinOpenAt },
+    },
+    include: {
+      course_schedule: {
+        include: {
+          course_class: {
+            include: {
+              subject: true,
+              teacher: true,
+            },
+          },
+          start_shift: true,
+          end_shift: true,
+        },
+      },
+    },
+  });
+
+  if (conflicts.length > 0) {
+    return {
+      error: 'SCHEDULE_CONFLICT' as const,
+      conflicts: conflicts.map((c) => {
+        const cs = c.course_schedule;
+        return {
+          subjectName: cs.course_class.subject.name,
+          courseCode: cs.course_class.course_code,
+          teacherName: cs.course_class.teacher.full_name,
+          room: schedule.room.room_code,
+          shift: buildShiftLabel(cs.start_shift.name, cs.end_shift.name),
+          checkinOpenAt: c.checkin_open_at.toISOString(),
+          checkinCloseAt: c.checkin_close_at.toISOString(),
+        };
+      }),
+    };
+  }
+
+  // Tạo phiên mới
+  const newSession = await prisma.attendance_Session.create({
+    data: {
+      id_course_schedule: schedule.id_course_schedule,
+      session_date: sessionDateUtc,
+      status: AttendanceSessionStatus.NOT_STARTED,
+      checkin_open_at: checkinOpenAt,
+      checkin_close_at: checkinCloseAt,
+      is_manual: true,
+      manual_reason: params.reason ?? null,
+    },
+  });
+
+  return {
+    success: true as const,
+    session: {
+      idAttendanceSession: newSession.id_attendance_session,
+      sessionDate: newSession.session_date.toISOString().split('T')[0],
+      status: newSession.status,
+      checkinOpenAt: newSession.checkin_open_at.toISOString(),
+      checkinCloseAt: newSession.checkin_close_at.toISOString(),
+      isManual: newSession.is_manual,
+      subjectName: schedule.course_class.subject.name,
+      courseCode: schedule.course_class.course_code,
+      room: schedule.room.room_code,
+      shift: buildShiftLabel(
+        schedule.start_shift.name,
+        schedule.end_shift.name,
+      ),
+      teacherName: schedule.course_class.teacher.full_name,
+    },
+  };
+};
+
+const getAllCourseSchedules = async () => {
+  const schedules = await prisma.course_Schedule.findMany({
+    include: {
+      course_class: {
+        include: {
+          subject: true,
+          teacher: true,
+        },
+      },
+      room: true,
+      start_shift: true,
+      end_shift: true,
+    },
+    orderBy: [
+      { course_class: { course_code: 'asc' } },
+      { day_of_week: 'asc' },
+    ],
+  });
+
+  return schedules.map((s) => ({
+    idCourseSchedule: s.id_course_schedule,
+    courseCode: s.course_class.course_code,
+    subjectName: s.course_class.subject.name,
+    subjectCode: s.course_class.subject.subject_code,
+    teacherName: s.course_class.teacher.full_name,
+    dayOfWeek: s.day_of_week,
+    room: s.room.room_code,
+    shift: buildShiftLabel(s.start_shift.name, s.end_shift.name),
+    startDate: s.start_date.toISOString().split('T')[0],
+    endDate: s.end_date.toISOString().split('T')[0],
+  }));
+};
+
 export const AttendanceSessionService = {
   getAllAttendanceSessions,
+  cancelAttendanceSession,
+  checkScheduleConflicts,
+  createManualAttendanceSession,
+  getAllCourseSchedules,
 };

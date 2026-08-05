@@ -6,7 +6,7 @@ export interface TeacherCourseClassItem {
   total_students: number;
 }
 
-export type AttendanceSessionStatus = 'NOT_STARTED' | 'OPEN' | 'CLOSED';
+export type AttendanceSessionStatus = 'NOT_STARTED' | 'OPEN' | 'CLOSED' | 'CANCELLED';
 export type AttendanceRecordStatus = 'PRESENT' | 'LATE' | 'ABSENT';
 export type EffectiveAttendanceStatus = AttendanceRecordStatus | 'PENDING';
 

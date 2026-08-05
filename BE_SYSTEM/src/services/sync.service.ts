@@ -285,7 +285,7 @@ export const SyncService = async (payload: TrainingSyncCourseClassesInput) => {
       const cleanSubjectCode = subject.subject_code.trim();
       const cleanCourseCode = item.courseCode.trim();
 
-      // Ghép mã môn + nhóm học phần để đảm bảo tính duy nhất toàn hệ thống (vd: CS03017_01)
+      // Ghép mã môn + nhóm học phần để đảm bảo tính duy nhất toàn hệ thống
       const formattedCourseCode = cleanCourseCode.startsWith(`${cleanSubjectCode}_`)
         ? cleanCourseCode
         : `${cleanSubjectCode}_${cleanCourseCode}`;

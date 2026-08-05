@@ -55,12 +55,14 @@ const sessionStatusLabel: Record<AttendanceSessionStatus, string> = {
   NOT_STARTED: 'Chưa bắt đầu',
   OPEN: 'Đang mở',
   CLOSED: 'Đã đóng',
+  CANCELLED: 'Đã hủy',
 };
 
 const sessionStatusColor: Record<AttendanceSessionStatus, string> = {
   NOT_STARTED: 'default',
   OPEN: 'processing',
   CLOSED: 'success',
+  CANCELLED: 'error',
 };
 
 const attendanceStatusLabel: Record<EffectiveAttendanceStatus, string> = {

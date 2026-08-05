@@ -177,7 +177,7 @@ const enrollStudentFace = async (params: {
       .map((item) => item.face_id);
     // Xóa các khuôn mặt cũ
     await AwsRekognitionService.deleteFaces(replacedFaceIds).catch((error) => {
-      console.error('Delete replaced Rekognition faces failed:', error);
+      console.error('Lỗi khi xóa khuôn mặt trên AWS Rekognition:', error);
     });
     // Trả về kết quả
     return {
@@ -204,13 +204,13 @@ const enrollStudentFace = async (params: {
       await AwsRekognitionService.deleteFaces([
         indexedFace.faceId,
       ]).catch((cleanupError) => {
-        console.error('Cleanup indexed Rekognition face failed:', cleanupError);
+        console.error('Lỗi khi xóa khuôn mặt trên AWS Rekognition:', cleanupError);
       });
     }
     // Xóa ảnh trên S3 nếu có lỗi
     if (uploadedImageKey) {
       await AwsS3Service.deleteObject(uploadedImageKey).catch((cleanupError) => {
-        console.error('Cleanup S3 face enrollment image failed:', cleanupError);
+        console.error('Lỗi khi xóa ảnh trên AWS S3:', cleanupError);
       });
     }
     throw error;
